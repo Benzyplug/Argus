@@ -133,7 +133,7 @@ client.once(Events.ClientReady, async (readyClient) => {
 });
 
 client.on(Events.GuildCreate, leaveUnauthorized);
-client.on(Events.Error, (err) => {
+client.on('error', (err) => {
     logger.error({ err }, 'Discord client error');
 });
 
