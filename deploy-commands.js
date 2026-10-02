@@ -61,8 +61,17 @@ async function main() {
 
     const deployed = await rest.put(route, { body: commands });
 
+    // Verify the API now contains only the Argus command set. If an older
+    // bob-* command survived in the selected scope, remove it explicitly.
+    const current = await rest.get(route);
+    const stale = current.filter(command => command.name.startsWith('bob-'));
+    for (const command of stale) {
+        await rest.delete(`${route}/${command.id}`);
+        console.log(`🗑️ Removed stale /${command.name}`);
+    }
+
     console.log(`\n✅ Registered ${deployed.length} command(s) ${isGlobalDeploy ? 'globally' : `in guild ${GUILD_ID}`}.`);
-    console.log('Old guild commands are replaced by this complete command set.');
+    console.log('🔒 Verified command scope contains the current Argus command set.');
 }
 
 main().catch(error => {
