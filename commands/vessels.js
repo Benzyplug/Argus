@@ -1,7 +1,7 @@
 /**
  * File: vessels.js
  * Description: Command to get vessel tracking links for an IMO number
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command generates tracking links for maritime vessels based on IMO numbers
  * or vessel names, providing quick access to multiple vessel tracking services.
@@ -11,7 +11,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-vessel')
+        .setName('vessel')
         .setDescription('Get vessel tracking and information links')
         .addSubcommand(subcommand =>
             subcommand

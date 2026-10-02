@@ -40,7 +40,7 @@
  * - Handles both absolute and relative favicon URLs
  * - Progressive favicon discovery with quality preference
  * 
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * Version: 2.0
  */
 
@@ -326,7 +326,7 @@ const createResultEmbed = (data, filename) => {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-favicon')
+        .setName('favicon')
         .setDescription('Extract and analyze website favicons for OSINT and asset discovery')
         .addStringOption(option =>
             option.setName('url')

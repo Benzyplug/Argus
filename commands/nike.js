@@ -1,5 +1,5 @@
 /**
- * Discord Slash Command: /bob-nike
+ * Discord Slash Command: /nike
  * 
  * Description:
  * A Discord bot command that wraps the functionality of Nikelligence 
@@ -13,7 +13,7 @@
  * - Generates rich HTML reports with embedded user data and profile images.
  * - Sends result previews and attached reports back to the Discord channel.
  * 
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  */
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const axios = require('axios');
@@ -154,7 +154,7 @@ function generateHTMLReport(objects, searchString) {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('bob-nike')
+    .setName('nike')
     .setDescription('Look up Nike Run Club user by email or full name')
     .addStringOption((option) =>
       option

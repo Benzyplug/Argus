@@ -1,15 +1,15 @@
 const { PermissionFlagsBits } = require('discord.js');
 
 const RESTRICTED_COMMANDS = {
-    'bob-nuclei': PermissionFlagsBits.Administrator,
-    'bob-monitor': PermissionFlagsBits.ManageGuild,
-    'bob-rekognition': PermissionFlagsBits.ManageGuild,
-    'bob-jwt': PermissionFlagsBits.ManageGuild,
-    'bob-ghunt': PermissionFlagsBits.ManageGuild,
-    'bob-sherlock': PermissionFlagsBits.ManageGuild,
-    'bob-maigret': PermissionFlagsBits.ManageGuild,
-    'bob-linkook': PermissionFlagsBits.ManageGuild,
-    'bob-xeuledoc': PermissionFlagsBits.ManageGuild
+    'nuclei': PermissionFlagsBits.Administrator,
+    'monitor': PermissionFlagsBits.ManageGuild,
+    'image-ai': PermissionFlagsBits.ManageGuild,
+    'jwt': PermissionFlagsBits.ManageGuild,
+    'google-investigate': PermissionFlagsBits.ManageGuild,
+    'sherlock': PermissionFlagsBits.ManageGuild,
+    'maigret': PermissionFlagsBits.ManageGuild,
+    'linkook': PermissionFlagsBits.ManageGuild,
+    'doc-meta': PermissionFlagsBits.ManageGuild
 };
 
 function getAllowedRoles() {

@@ -1,7 +1,7 @@
 /**
  * File: aviation.js
  * Description: Command to get real-time flight information using Aviation Stack API
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command allows users to retrieve flight information by flight number,
  * airline code, or airport code using the AviationStack API.
@@ -12,7 +12,7 @@ const axios = require('axios');
 const { getSafeAxiosConfig } = require('../utils/ssrf');
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-flight')
+        .setName('flight')
         .setDescription('Get real-time flight information')
         .addStringOption(option => 
             option.setName('flight_number')

@@ -1,7 +1,7 @@
 /**
  * File: redirect-chain-enhanced.js
  * Description: Advanced URL redirect chain analysis for digital forensics and security research
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command provides comprehensive analysis of URL redirect chains, enabling investigators
  * to trace malicious redirects, identify tracking mechanisms, analyze security vulnerabilities,
@@ -35,7 +35,7 @@ function setCache(key, value) {
 module.exports = {
     shutdown() { clearInterval(cachePruneInterval); },
     data: new SlashCommandBuilder()
-        .setName('bob-redirect-check')
+        .setName('redirect-check')
         .setDescription('Check URL redirects with advanced security analysis')
         .addStringOption(option =>
             option.setName('url')

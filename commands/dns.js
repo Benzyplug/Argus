@@ -1,7 +1,7 @@
 /**
  * File: dns.js
  * Description: DNS information retrieval command for domain reconnaissance
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command provides comprehensive DNS information for domain analysis including:
  * - DNS records (A, AAAA, MX, TXT, CNAME, NS)
@@ -13,7 +13,7 @@
  * - DNSDumpster API (requires DNSDUMPSTER_TOKEN in .env)
  * - Axios for HTTP requests
  * 
- * Usage: /bob-dns domain:example.com
+ * Usage: /dns domain:example.com
  */
 
 const { SlashCommandBuilder } = require('discord.js');
@@ -23,7 +23,7 @@ const { isValidDomain, sanitizeInput } = require('../utils/validation');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-dns')
+        .setName('dns')
         .setDescription('Retrieve comprehensive DNS information for a domain')
         .addStringOption(option => 
             option.setName('domain')

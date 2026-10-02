@@ -1,7 +1,7 @@
 /**
  * File: maigret.js
  * Description: Maigret collects a dossier on a person by username only, checking for accounts on a huge number of sites and gathering all the available information from web pages. No API keys are required. Maigret is an easy-to-use and powerful fork of Sherlock.
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * A discord wrapper around https://github.com/soxoj/maigret
  */
@@ -14,7 +14,7 @@ const { archiveReport } = require('../utils/reports');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-maigret')
+        .setName('maigret')
         .setDescription('Run a Maigret OSINT scan')
         .addStringOption(option =>
             option.setName('username')

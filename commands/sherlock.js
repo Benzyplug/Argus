@@ -1,7 +1,7 @@
 /**
  * File: sherlock.js
  * Description: Username investigation across multiple social media platforms
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command leverages the Sherlock tool to search for usernames across
  * hundreds of social networking sites, providing comprehensive username
@@ -34,7 +34,7 @@ const { archiveReport } = require('../utils/reports');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-sherlock')
+        .setName('sherlock')
         .setDescription('Search for username across multiple social media platforms')
         .addStringOption(option =>
             option.setName('username')

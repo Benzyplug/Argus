@@ -1,7 +1,7 @@
 /**
  * File: clear-commands.js
  * Description: Utility to clear all Discord slash commands for clean redeployment
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This script removes all existing slash commands from Discord to ensure
  * clean deployment of updated commands. Use when command structures change

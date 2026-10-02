@@ -1,15 +1,15 @@
 /**
  * File: ghunt.js
  * Description: Discord wrapper around GHunt (https://github.com/mxrch/GHunt)
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  *
  * Supports login via GHunt Companion base64 token, login-status checks,
  * and all standard GHunt search modes (email, gaia, drive, geolocate, spiderdal).
  *
  * Usage:
- *   /bob-ghunt type:login token:<base64-from-companion>
- *   /bob-ghunt type:check-login
- *   /bob-ghunt type:email query:test@gmail.com
+ *   /google-investigate type:login token:<base64-from-companion>
+ *   /google-investigate type:check-login
+ *   /google-investigate type:email query:test@gmail.com
  */
 
 const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, MessageFlags } = require('discord.js');
@@ -249,7 +249,7 @@ function extractDriveId(url) {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-ghunt')
+        .setName('google-investigate')
         .setDescription('Execute GHunt commands for OSINT')
         .addStringOption(option =>
             option.setName('type')
@@ -297,7 +297,7 @@ module.exports = {
                         '1. Install the [GHunt Companion](https://github.com/mxrch/GHunt/tree/master/gc-assets) browser extension\n' +
                         '2. Log in to your Google account in the browser\n' +
                         '3. Click the extension icon → copy the base64 string\n' +
-                        '4. Run `/bob-ghunt type:login query:<base64-string>`',
+                        '4. Run `/google-investigate type:login query:<base64-string>`',
                     flags: MessageFlags.Ephemeral
                 });
             }
@@ -310,7 +310,7 @@ module.exports = {
                     content: '✅ **GHunt Credentials Saved**\n' +
                         `📁 Path: \`${credsPath}\`\n` +
                         '🎯 You can now run GHunt lookups.\n\n' +
-                        '**Test it:** `/bob-ghunt type:check-login`'
+                        '**Test it:** `/google-investigate type:check-login`'
                 });
             } catch (error) {
                 console.error('[GHUNT] Login error:', error.message);
@@ -341,7 +341,7 @@ module.exports = {
                 statusText = '⚠️ **Credentials File Exists but Invalid**\n' +
                     `Found: \`${credsPath}\`\n` +
                     'The file exists but does not contain valid GHunt credentials.\n' +
-                    'Run `/bob-ghunt type:login query:<base64-token>` to refresh.';
+                    'Run `/google-investigate type:login query:<base64-token>` to refresh.';
                 color = 0xffff00;
             } else {
                 statusText = '❌ **Not Logged In**\n' +
@@ -350,7 +350,7 @@ module.exports = {
                     '1. Install the [GHunt Companion](https://github.com/mxrch/GHunt/tree/master/gc-assets) browser extension\n' +
                     '2. Log in to your Google account in the browser\n' +
                     '3. Click the extension icon → copy the base64 string\n' +
-                    '4. Run `/bob-ghunt type:login query:<base64-string>`';
+                    '4. Run `/google-investigate type:login query:<base64-string>`';
                 color = 0xff0000;
             }
 
@@ -404,7 +404,7 @@ module.exports = {
                 content: '❌ **GHunt Not Authenticated**\n' +
                     `No valid credentials found at \`${credsPath}\`.\n\n` +
                     '**Authenticate with:**\n' +
-                    '`/bob-ghunt type:login query:<base64-from-companion>`\n\n' +
+                    '`/google-investigate type:login query:<base64-from-companion>`\n\n' +
                     '**How to get a token:**\n' +
                     '1. Install the [GHunt Companion](https://github.com/mxrch/GHunt/tree/master/gc-assets) browser extension\n' +
                     '2. Log in to your Google account in the browser\n' +
@@ -573,8 +573,8 @@ module.exports = {
                 embed.setColor(0xff0000)
                     .setTitle('Authentication Failed')
                     .setDescription('GHunt reported an authentication error. Your Google session may have expired.\n\n' +
-                        '**Run:** `/bob-ghunt type:check-login` to verify\n' +
-                        '**Then:** `/bob-ghunt type:login query:<base64-from-companion>` to refresh');
+                        '**Run:** `/google-investigate type:check-login` to verify\n' +
+                        '**Then:** `/google-investigate type:login query:<base64-from-companion>` to refresh');
             } else {
                 const userMsg = errMsg.includes('ENOENT') || errMsg.includes('Failed to start process')
                     ? 'GHunt is not installed or not found in PATH. Please contact the administrator.'

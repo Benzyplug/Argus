@@ -32,7 +32,7 @@
  * - Appropriate file system permissions for temp directory
  * - Discord.js v14+ with slash command support
  *
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  */
 
 const { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
@@ -126,7 +126,7 @@ const createResultEmbed = (title, content, color = 0x0099FF) => {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-jwt')
+        .setName('jwt')
         .setDescription('Advanced JWT token analysis and manipulation toolkit')
         .addSubcommand(subcommand =>
             subcommand

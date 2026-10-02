@@ -1,13 +1,13 @@
 /**
  * File: upload.js
  * Description: Upload Discord attachments to the 1min.ai Asset API
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  *
  * This command lets investigators upload files (audio, images, PDFs, etc.)
  * directly from Discord to the 1min.ai Asset API so they can be referenced
- * by other AI features such as /bob-chat transcribe.
+ * by other AI features such as /argus-chat transcribe.
  *
- * Usage: /bob-upload file:<attachment>
+ * Usage: /upload file:<attachment>
  */
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
@@ -22,7 +22,7 @@ const ASSET_API_URL = 'https://api.1min.ai/api/assets';
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-upload')
+        .setName('upload')
         .setDescription('Upload a file to the 1min.ai Asset API for use with AI features')
         .addAttachmentOption(option =>
             option.setName('file')
@@ -115,7 +115,7 @@ module.exports = {
                 });
             }
 
-            embed.setFooter({ text: 'Use the Asset Path in /bob-chat transcribe or other AI features.' });
+            embed.setFooter({ text: 'Use the Asset Path in /argus-chat transcribe or other AI features.' });
 
             await interaction.editReply({ content: null, embeds: [embed] });
 

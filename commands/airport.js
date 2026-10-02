@@ -1,7 +1,7 @@
 /**
  * File: airport.js
  * Description: Comprehensive airport information and intelligence gathering
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  *
  * This command provides detailed airport intelligence including:
  * - Airport operational data and statistics
@@ -22,8 +22,8 @@
  * - TravelPayouts API for basic airport data
  * - Multiple aviation databases for comprehensive coverage
  *
- * Usage: /bob-airport icao:EGLL
- *        /bob-airport iata:LHR
+ * Usage: /airport icao:EGLL
+ *        /airport iata:LHR
  */
 
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
@@ -32,7 +32,7 @@ const { getSafeAxiosConfig } = require('../utils/ssrf');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-airport')
+        .setName('airport')
         .setDescription('Get information about an airport')
         .addStringOption(option =>
             option.setName('icao')

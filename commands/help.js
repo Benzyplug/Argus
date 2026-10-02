@@ -1,7 +1,7 @@
 /**
  * File: help.js
  * Description: Lists all registered slash commands with descriptions
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  */
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
@@ -10,7 +10,7 @@ const { DESCRIPTION_LIMIT } = require('../utils/embed');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-help')
+        .setName('help')
         .setDescription('List all available bob-* commands'),
 
     async execute(interaction) {

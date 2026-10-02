@@ -1,7 +1,7 @@
 /**
  * File: nuclei.js
  * Description: Advanced OSINT vulnerability scanner using Nuclei templates for username enumeration
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command leverages Project Discovery's Nuclei scanner to perform OSINT reconnaissance
  * on usernames across multiple platforms and services. Nuclei is a powerful, community-driven
@@ -45,10 +45,10 @@
  * - Process termination safeguards prevent resource exhaustion
  * 
  * Usage Examples:
- * /bob-nuclei username:john_doe
- * /bob-nuclei username:target_user verbose:true timeout:120
- * /bob-nuclei username:username123 tags:social,gaming
- * /bob-nuclei username:research_user tags:academic,professional timeout:300
+ * /nuclei username:john_doe
+ * /nuclei username:target_user verbose:true timeout:120
+ * /nuclei username:username123 tags:social,gaming
+ * /nuclei username:research_user tags:academic,professional timeout:300
  * 
  * Output Formats:
  * - Interactive Discord messages with @user mentions
@@ -90,7 +90,7 @@ const crypto = require('crypto');
  */
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-nuclei')
+        .setName('nuclei')
         .setDescription('🔍 Advanced OSINT username enumeration using Nuclei vulnerability scanner')
         .addStringOption(option =>
             option.setName('username')

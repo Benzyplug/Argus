@@ -1,7 +1,7 @@
 /**
  * File: flight-number.js
  * Description: Command to get flight tracking links for a given flight number
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command takes a flight number as input and generates tracking links
  * for various flight tracking services to help users monitor flights.
@@ -11,7 +11,7 @@ const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js'
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-flight-number')
+        .setName('flight-number')
         .setDescription('Get flight tracking links for a flight number')
         .addStringOption(option =>
             option.setName('flight')

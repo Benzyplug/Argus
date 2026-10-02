@@ -1,7 +1,7 @@
 /**
  * File: linkook.js
  * Description: Command to search for usernames across social platforms using Linkook
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command interfaces with the Linkook tool to find username presence across
  * various social media platforms and websites, similar to Sherlock or Maigret.
@@ -18,7 +18,7 @@ const { archiveReport } = require('../utils/reports');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-linkook')
+        .setName('linkook')
         .setDescription('Search for a username across social platforms using Linkook')
         .addStringOption(option => 
             option.setName('username')

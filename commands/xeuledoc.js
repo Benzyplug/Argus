@@ -2,7 +2,7 @@
 /**
  * File: xeuledoc.js
  * Description: Google Documents and Drive OSINT intelligence gathering
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  *
  * Discord wrapper around https://github.com/Malfrats/xeuledoc
  */
@@ -12,7 +12,7 @@ const { safeSpawn } = require('../utils/process');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-xeuledoc')
+        .setName('doc-meta')
         .setDescription('Runs the installed xeuledoc command with a Google resource link')
         .addStringOption(option =>
             option.setName('link')

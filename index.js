@@ -1,4 +1,4 @@
-// Main Discord bot entry point for OSINT Assistant — gl0bal01
+// Main Discord bot entry point for OSINT Assistant — Benzyplug
 require('dotenv').config();
 
 const { Client, GatewayIntentBits, Events, MessageFlags } = require('discord.js');
@@ -129,5 +129,5 @@ client.on(Events.InteractionCreate, async interaction => {
 process.on('uncaughtException', (err) => { logger.fatal({ err }, 'uncaughtException'); process.exit(1); });
 process.on('unhandledRejection', (reason) => { logger.fatal({ reason }, 'unhandledRejection'); process.exit(1); });
 
-logger.info('Starting Discord OSINT Assistant...');
+logger.info('Starting Argus...');
 client.login(process.env.DISCORD_TOKEN);

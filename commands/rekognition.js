@@ -41,7 +41,7 @@ function getRekognitionClient() {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-rekognition')
+        .setName('image-ai')
         .setDescription('Analyze images using AWS Rekognition')
         .addSubcommand(subcommand =>
             subcommand

@@ -1,7 +1,7 @@
 /**
  * File: pappers.js
  * Description: Command to get European company information via Pappers API
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command interfaces with the Pappers API to retrieve comprehensive information
  * about European companies, including company details, officers, and financial data.
@@ -41,7 +41,7 @@ const COUNTRY_CODES = [
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-pappers')
+        .setName('pappers')
         .setDescription('Get European company information via Pappers API')
         .addSubcommand(subcommand =>
             subcommand

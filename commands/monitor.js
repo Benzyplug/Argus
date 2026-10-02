@@ -1,12 +1,12 @@
 /**
- * Discord Slash Command: /bob-monitor
+ * Discord Slash Command: /monitor
  *
  * Polls user-supplied URLs at fixed intervals and posts a Discord
  * notification to MONITOR_CHANNEL_ID when the page body hash changes.
  *
  * Subcommands: start, stop, stopall, list.
  *
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  */
 
 const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require('discord.js');
@@ -57,7 +57,7 @@ async function checkWebsite(url, client) {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-monitor')
+        .setName('monitor')
         .setDescription('Monitor website changes')
         .addSubcommand(subcommand =>
             subcommand

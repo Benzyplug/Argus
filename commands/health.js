@@ -1,9 +1,9 @@
 /**
  * File: health.js
  * Description: Bot health monitoring and system status command
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
- * This command provides comprehensive health monitoring for the Discord OSINT Assistant,
+ * This command provides comprehensive health monitoring for the Argus,
  * including system metrics, API availability, external tool status, and performance data.
  * Essential for maintaining operational awareness and troubleshooting issues.
  * 
@@ -15,7 +15,7 @@
  * - Performance metrics and uptime tracking
  * - Environment configuration verification
  * 
- * Usage: /bob-health detailed:true
+ * Usage: /health detailed:true
  */
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
@@ -28,7 +28,7 @@ const { getSafeAxiosConfig } = require('../utils/ssrf');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-health')
+        .setName('health')
         .setDescription('Check bot health status and system metrics')
         .addBooleanOption(option =>
             option.setName('detailed')
@@ -424,7 +424,7 @@ function createHealthEmbed(healthData, detailed) {
     };
     
     const embed = new EmbedBuilder()
-        .setTitle('🏥 Discord OSINT Assistant - Health Status')
+        .setTitle('🏥 Argus - Health Status')
         .setColor(statusColors[healthData.overall.status])
         .setTimestamp()
         .setFooter({ text: `Health check completed in ${healthData.processingTime}ms` });

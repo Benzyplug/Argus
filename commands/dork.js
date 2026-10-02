@@ -1,7 +1,7 @@
 /**
- * File: bob-dork.js
+ * File: dork.js
  * Description: Command to generate a list of Google dork URLs for OSINT person lookup
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command generates a list of Google dork search URLs based on a person's name
  * to assist in open source intelligence gathering.
@@ -14,7 +14,7 @@ const { archiveReport } = require('../utils/reports');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-dork')
+        .setName('dork')
         .setDescription('Generate Google dork URLs for person lookup')
         .addStringOption(option =>
             option.setName('firstname')

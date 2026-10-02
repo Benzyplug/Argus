@@ -1,7 +1,7 @@
 /**
  * File: blockchain.js
  * Description: Command to retrieve blockchain information (addresses, transactions, blocks)
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  *
  * This command interfaces with various blockchain APIs to retrieve information about
  * wallet addresses, transactions, and blocks across different cryptocurrencies.
@@ -75,7 +75,7 @@ function testnetExplorerUrl(blockchain, kind, id) {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-blockchain')
+        .setName('blockchain')
         .setDescription('Retrieve blockchain information (addresses, transactions, blocks)')
         .addSubcommand(subcommand =>
             subcommand

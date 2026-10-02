@@ -70,7 +70,7 @@ function getTopDomains(links, limit = 10) {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-extract-links')
+        .setName('extract-links')
         .setDescription('Extract all unique links from a webpage and generate a report.')
         .addStringOption(option =>
             option.setName('url')

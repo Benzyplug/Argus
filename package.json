@@ -1,20 +1,20 @@
 {
-  "name": "discord-osint-assistant",
+  "name": "argus",
   "version": "2.3.0",
-  "description": "A powerful Discord bot for Open Source Intelligence (OSINT) gathering and analysis",
+  "description": "Argus — a Discord OSINT assistant for reconnaissance, investigation, and analysis",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
     "deploy": "node deploy-commands.js",
     "deploy:global": "node deploy-commands.js --global",
-    "deploy:force": "bun run clear && bun run deploy",
+    "deploy:force": "npm run clear && bun run deploy",
     "clear": "node clear-commands.js --force",
     "clear:global": "node clear-commands.js --global --force",
     "clear:all": "node clear-commands.js --all --force",
     "clear:list": "node clear-commands.js --list",
-    "redeploy": "bun run clear && bun run deploy",
-    "redeploy:global": "bun run clear:global && bun run deploy:global",
+    "redeploy": "npm run clear && bun run deploy",
+    "redeploy:global": "npm run clear:global && bun run deploy:global",
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "node scripts/smoke-test.js",
@@ -34,16 +34,16 @@
     "social-engineering",
     "cybersecurity"
   ],
-  "author": "gl0bal01",
+  "author": "ẞ€ÑZ¥",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gl0bal01/discord-osint-assistant.git"
+    "url": "https://github.com/Benzyplug/Argus.git"
   },
   "bugs": {
-    "url": "https://github.com/gl0bal01/discord-osint-assistant/issues"
+    "url": "https://github.com/Benzyplug/Argus/issues"
   },
-  "homepage": "https://github.com/gl0bal01/discord-osint-assistant#readme",
+  "homepage": "https://github.com/Benzyplug/Argus#readme",
   "engines": {
     "node": ">=20.0.0"
   },

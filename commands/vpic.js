@@ -1,7 +1,7 @@
 /**
  * File: vpic.js
  * Description: Command to retrieve vehicle information using NHTSA vPIC API
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command interfaces with the NHTSA vPIC API to decode VINs and
  * retrieve vehicle make information, returning detailed vehicle data.
@@ -16,7 +16,7 @@ const { archiveReport } = require('../utils/reports');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-vpic')
+        .setName('vehicle')
         .setDescription('Retrieve vehicle information using NHTSA vPIC API')
         .addSubcommand(subcommand =>
             subcommand
@@ -323,7 +323,7 @@ async function handleGetMakes(interaction, returnRaw) {
             .setColor(0x0099FF)
             .addFields(
                 { name: `Makes (Page ${page} of ${totalPages})`, value: makesList || 'No makes found' },
-                { name: 'Navigation', value: `Use \`/bob-vpic makes page:${page + 1}\` to see the next page` }
+                { name: 'Navigation', value: `Use \`/vehicle makes page:${page + 1}\` to see the next page` }
             )
             .setTimestamp()
             .setFooter({ text: `Page ${page} of ${totalPages} • Data from NHTSA vPIC API` });

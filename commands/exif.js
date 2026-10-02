@@ -1,7 +1,7 @@
 /**
  * File: exif.js
  * Description: Image metadata extraction and GPS coordinate analysis
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command extracts comprehensive EXIF metadata from images including:
  * - Camera information (make, model, settings)
@@ -19,7 +19,7 @@
  * - ExifTool (external binary)
  * - GPS2MapUrl.config for coordinate mapping
  * 
- * Usage: /bob-exif url:https://example.com/image.jpg
+ * Usage: /exif url:https://example.com/image.jpg
  */
 
 const { SlashCommandBuilder, AttachmentBuilder, MessageFlags } = require('discord.js');
@@ -36,7 +36,7 @@ const fsPromises = require('fs').promises;
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-exif')
+        .setName('exif')
         .setDescription('Extract comprehensive EXIF metadata from an image URL')
         .addStringOption(option =>
             option.setName('url')

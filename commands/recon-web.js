@@ -1,7 +1,7 @@
 /**
- * File: bob-web-recon.js
+ * File: web-recon.js
  * Description: Multi-source domain reconnaissance tool for Discord bots
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command performs web reconnaissance by providing direct link access to services on a given domain using:
  * - Certificate transparency search (CertSpotter, crt.sh)
@@ -16,7 +16,7 @@
  * - Interactive buttons for streamlined navigation
  * - Temporary file handling and cleanup for favicon analysis
  * 
- * Usage: /bob-web-recon domain:example.com service:[all|certspotter|virustotal|crtsh|wayback|shodan]
+ * Usage: /web-recon domain:example.com service:[all|certspotter|virustotal|crtsh|wayback|shodan]
  */
 
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js');
@@ -33,7 +33,7 @@ const mmh = require('murmurhash'); // Changed from mmh3 to mmh
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-web-recon')
+        .setName('web-recon')
         .setDescription('Perform reconnaissance on a domain using various tools')
         .addStringOption(option =>
             option.setName('domain')

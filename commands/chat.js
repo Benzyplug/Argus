@@ -1,7 +1,7 @@
 /**
  * File: chat.js
  * Description: AI-powered chat assistant with multi-model support for OSINT analysis
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  *
  * This command provides access to various AI models for OSINT analysis, research
  * assistance, data interpretation, and investigative support. Integrates with
@@ -23,8 +23,8 @@
  * - DeepSeek models
  * - Perplexity reasoning models
  *
- * Usage: /bob-chat message:"Analyze this OSINT data" model:gpt-4o
- *        /bob-chat message:"Generate Python script for data parsing" type:code
+ * Usage: /ai message:"Analyze this OSINT data" model:gpt-4o
+ *        /ai message:"Generate Python script for data parsing" type:code
  */
 
 const { SlashCommandBuilder, AttachmentBuilder, MessageFlags } = require('discord.js');
@@ -65,7 +65,7 @@ pruneInterval.unref();
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-chat')
+        .setName('ai')
         .setDescription('AI-powered assistant for OSINT analysis and research support')
         .addSubcommand(subcommand =>
             subcommand
@@ -481,7 +481,7 @@ async function createConversation(type, model, apiKey, context) {
     const response = await axios.post(
         'https://api.1min.ai/api/conversations',
         {
-            title: contextTitles[context] || 'Discord OSINT Assistant',
+            title: contextTitles[context] || 'Argus',
             type: type === 'CHAT_WITH_AI' ? 'UNIFY_CHAT_WITH_AI' : type,
             model: model
         },

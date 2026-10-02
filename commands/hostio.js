@@ -1,7 +1,7 @@
 /**
  * File: hostio.js
  * Description: Command to get domain information from host.io API
- * Author: gl0bal01
+ * Author: ẞ€ÑZ¥
  * 
  * This command interfaces with the host.io API to retrieve comprehensive domain
  * information and related domains based on various criteria.
@@ -28,7 +28,7 @@ const FIELD_TYPES = [
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bob-hostio')
+        .setName('hostio')
         .setDescription('Get domain information from host.io')
         .addSubcommand(subcommand =>
             subcommand
