@@ -1,7 +1,7 @@
 // Main Discord bot entry point for OSINT Assistant — Benzyplug
 require('dotenv').config();
 
-const { Client, GatewayIntentBits, Events, MessageFlags, REST, Routes } = require('discord.js');
+const { Client, GatewayIntentBits, Events, MessageFlags, REST, Routes, ActivityType } = require('discord.js');
 const path = require('node:path');
 const { checkPermission } = require('./utils/permissions');
 const { checkRateLimit, startRateLimitPrune, stopRateLimitPrune } = require('./utils/ratelimit');
@@ -56,7 +56,11 @@ function updatePresence() {
     const message = PRESENCE_MESSAGES[presenceIndex++ % PRESENCE_MESSAGES.length];
     client.user.setPresence({
         status: 'dnd',
-        activities: [{ name: message, type: 0 }]
+        activities: [{
+            name: 'ARGUS',
+            type: ActivityType.Custom,
+            state: message
+        }]
     }).catch(err => logger.warn({ err }, 'Failed to update Argus presence'));
 }
 
@@ -82,8 +86,8 @@ async function syncApplicationCommands() {
         logger.warn('GUILD_ID is not set; skipping automatic guild command synchronization');
     }
 
-    // Keep global registrations aligned too, so stale bob-* commands are not
-    // left behind if the application was previously deployed globally.
+    // Keep global registrations aligned too. Guild and global command scopes are
+    // separate in Discord, so both must be overwritten to remove stale commands.
     try {
         const deployed = await rest.put(
             Routes.applicationCommands(process.env.CLIENT_ID),
