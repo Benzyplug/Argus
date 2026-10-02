@@ -133,6 +133,9 @@ client.once(Events.ClientReady, async (readyClient) => {
 });
 
 client.on(Events.GuildCreate, leaveUnauthorized);
+client.on(Events.Error, (err) => {
+    logger.error({ err }, 'Discord client error');
+});
 
 client.on(Events.InteractionCreate, async interaction => {
     if (ALLOWED_GUILDS.length > 0) {
@@ -198,4 +201,7 @@ process.on('uncaughtException', (err) => { logger.fatal({ err }, 'uncaughtExcept
 process.on('unhandledRejection', (reason) => { logger.fatal({ reason }, 'unhandledRejection'); process.exit(1); });
 
 logger.info('Starting Argus...');
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN).catch((err) => {
+    logger.fatal({ err }, 'Discord login failed');
+    process.exit(1);
+});
