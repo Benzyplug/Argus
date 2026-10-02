@@ -1,14 +1,14 @@
 const { PermissionFlagsBits } = require('discord.js');
 
 const RESTRICTED_COMMANDS = {
-    'nuclei': PermissionFlagsBits.Administrator,
+    'nuclei-scan': PermissionFlagsBits.Administrator,
     'monitor': PermissionFlagsBits.ManageGuild,
     'image-ai': PermissionFlagsBits.ManageGuild,
     'jwt': PermissionFlagsBits.ManageGuild,
     'google-investigate': PermissionFlagsBits.ManageGuild,
     'sherlock': PermissionFlagsBits.ManageGuild,
     'maigret': PermissionFlagsBits.ManageGuild,
-    'linkook': PermissionFlagsBits.ManageGuild,
+    'link-check': PermissionFlagsBits.ManageGuild,
     'doc-meta': PermissionFlagsBits.ManageGuild
 };
 
