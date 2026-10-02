@@ -3,7 +3,6 @@
 ## Prerequisites
 
 - **Node.js** >= 20 ([download](https://nodejs.org/))
-- **Bun** ([install](https://bun.sh/)) — used as the package manager
 - A **Discord bot token** — see [Discord setup](#discord-bot-setup) below
 
 ## Quick Start
@@ -64,11 +63,11 @@ Copy `.env.example` to `.env` and fill in your values. Here's what each variable
 | `DNSDUMPSTER_TOKEN` | [DNSDumpster](https://dnsdumpster.com/) | `/dns` |
 | `WHOXY_API_KEY` | [Whoxy](https://www.whoxy.com/) | `/whois` |
 | `HOSTIO_API_KEY` | [Host.io](https://host.io/) | `/hostio` |
-| `AVIATIONSTACK_API_KEY` | [AviationStack](https://aviationstack.com/) | `/bob-aviation`, `/flight-number` |
+| `AVIATIONSTACK_API_KEY` | [AviationStack](https://aviationstack.com/) | `/flight`, `/flight-number` |
 | `AIRPORTDB_API_KEY` | [AirportDB](https://airportdb.io/) | `/airport` |
 | `PAPPERS_API_KEY` | [Pappers](https://www.pappers.fr/) | `/pappers` |
 | `AI_API_KEY` | [1min.ai](https://1min.ai/) | `/ai` |
-| `VIRUSTOTAL_API_KEY` | [VirusTotal](https://www.virustotal.com/) | `/bob-recon-web` |
+| `VIRUSTOTAL_API_KEY` | [VirusTotal](https://www.virustotal.com/) | `/web-recon` |
 | `NIKE_TOKEN` | Nike Run Club | `/nike` |
 | `ETHERSCAN_API_KEY` | [Etherscan](https://etherscan.io/) | `/blockchain` |
 | `BSCSCAN_API_KEY` | [BscScan](https://bscscan.com/) | `/blockchain` |
@@ -108,7 +107,7 @@ The `docker-compose.yml` includes security hardening: non-root user, dropped cap
 To add external tools to the Docker image, extend the Dockerfile:
 
 ```dockerfile
-FROM Argus AS base
+FROM argus AS base
 USER root
 RUN pip install sherlock-project maigret
 USER botuser

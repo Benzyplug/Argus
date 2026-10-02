@@ -11,7 +11,7 @@ const { DESCRIPTION_LIMIT } = require('../utils/embed');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('help')
-        .setDescription('List all available bob-* commands'),
+        .setDescription('List all available Argus commands'),
 
     async execute(interaction) {
         const commands = [...interaction.client.commands.values()]
