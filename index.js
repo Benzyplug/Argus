@@ -105,13 +105,13 @@ function leaveUnauthorized(guild) {
     }
 }
 
-client.once(Events.ClientReady, (readyClient) => {
+client.once(Events.ClientReady, async (readyClient) => {
     logger.info({ tag: readyClient.user.tag, guilds: readyClient.guilds.cache.size, commands: client.commands.size }, 'Argus online');
     updatePresence();
     presenceTimer = setInterval(updatePresence, 30000);
     presenceTimer.unref?.();
     if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
-    syncGuildCommands();
+    await syncGuildCommands();
     markReady();
     discordEvents.inc({ event: 'ready' });
 });
