@@ -58,7 +58,10 @@ function leaveUnauthorized(guild) {
 
 client.once(Events.ClientReady, (readyClient) => {
     logger.info({ tag: readyClient.user.tag, guilds: readyClient.guilds.cache.size, commands: client.commands.size }, 'OSINT Assistant online');
-    client.user.setPresence({\n        status: 'dnd',\n        activities: [{ name: 'OSINT operations', type: 3 }]\n    });
+    client.user.setPresence({
+        status: 'dnd',
+        activities: [{ name: 'OSINT operations', type: 3 }]
+    });
     if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
     markReady();
     discordEvents.inc({ event: 'ready' });
