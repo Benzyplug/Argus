@@ -1,7 +1,7 @@
 // Main Discord bot entry point for OSINT Assistant — Benzyplug
 require('dotenv').config();
 
-const { Client, GatewayIntentBits, Events, MessageFlags } = require('discord.js');
+const { Client, GatewayIntentBits, Events, MessageFlags, REST, Routes } = require('discord.js');
 const path = require('node:path');
 const { checkPermission } = require('./utils/permissions');
 const { checkRateLimit, startRateLimitPrune, stopRateLimitPrune } = require('./utils/ratelimit');
@@ -33,6 +33,55 @@ if (process.env.METRICS_ENABLED === 'true') {
 
 const ALLOWED_GUILDS = bootstrap.parseAllowedGuilds(process.env.ALLOWED_GUILD_IDS);
 
+const PRESENCE_MESSAGES = [
+    '〢 👁️ Watching the Open Web',
+    '〢 🔎 OSINT Intelligence',
+    '〢 🛰️ Gathering Intelligence',
+    '〢 🧩 Connecting the Dots',
+    '〢 🔗 Correlating Evidence',
+    '〢 🧠 Analyzing Signals',
+    '〢 🌐 Monitoring the Web',
+    '〢 🕵️ Investigating Public Data',
+    '〢 ⚡ ARGUS Recon',
+    '〢 🧿 ARGUS Intelligence',
+    '〢 📡 Intelligence Network Active',
+    '〢 ⚙️ Investigation Engine Ready',
+    '〢 👑 Made by ẞ€ÑZ¥'
+];
+
+let presenceIndex = 0;
+let presenceTimer = null;
+
+function updatePresence() {
+    const message = PRESENCE_MESSAGES[presenceIndex++ % PRESENCE_MESSAGES.length];
+    client.user.setPresence({
+        status: 'dnd',
+        activities: [{ name: message, type: 0 }]
+    }).catch(err => logger.warn({ err }, 'Failed to update Argus presence'));
+}
+
+async function syncGuildCommands() {
+    if (!process.env.GUILD_ID) {
+        logger.warn('GUILD_ID is not set; skipping automatic guild command synchronization');
+        return;
+    }
+
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    const payload = [...client.commands.values()].map(command => command.data.toJSON());
+    const route = Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID);
+
+    try {
+        const deployed = await rest.put(route, { body: payload });
+        logger.info({
+            registered: deployed.length,
+            guildId: process.env.GUILD_ID,
+            commands: deployed.map(command => command.name)
+        }, 'Guild slash commands synchronized');
+    } catch (err) {
+        logger.error({ err }, 'Failed to synchronize guild slash commands');
+    }
+}
+
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
     allowedMentions: { parse: ['users'], repliedUser: false }
@@ -44,7 +93,7 @@ logger.info({ loaded: stats.loaded, skipped: stats.skipped, failed: stats.failed
 
 const shutdownHandler = bootstrap.createShutdownHandler(client, {
     onSignal: (signal) => { logger.info({ signal }, 'shutdown signal received'); markShuttingDown(); },
-    onDrain: async () => { stopRateLimitPrune(); stopHealthWriter(); stopHourlySweep(); stopReportsSweep(); if (metricsServer) await stopMetricsServer(); }
+    onDrain: async () => { if (presenceTimer) clearInterval(presenceTimer); stopRateLimitPrune(); stopHealthWriter(); stopHourlySweep(); stopReportsSweep(); if (metricsServer) await stopMetricsServer(); }
 });
 process.on('SIGINT', () => shutdownHandler('SIGINT'));
 process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
@@ -57,12 +106,12 @@ function leaveUnauthorized(guild) {
 }
 
 client.once(Events.ClientReady, (readyClient) => {
-    logger.info({ tag: readyClient.user.tag, guilds: readyClient.guilds.cache.size, commands: client.commands.size }, 'OSINT Assistant online');
-    client.user.setPresence({
-        status: 'dnd',
-        activities: [{ name: 'OSINT operations', type: 3 }]
-    });
+    logger.info({ tag: readyClient.user.tag, guilds: readyClient.guilds.cache.size, commands: client.commands.size }, 'Argus online');
+    updatePresence();
+    presenceTimer = setInterval(updatePresence, 30000);
+    presenceTimer.unref?.();
     if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
+    syncGuildCommands();
     markReady();
     discordEvents.inc({ event: 'ready' });
 });
