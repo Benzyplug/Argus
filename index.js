@@ -60,25 +60,41 @@ function updatePresence() {
     }).catch(err => logger.warn({ err }, 'Failed to update Argus presence'));
 }
 
-async function syncGuildCommands() {
-    if (!process.env.GUILD_ID) {
-        logger.warn('GUILD_ID is not set; skipping automatic guild command synchronization');
-        return;
-    }
-
+async function syncApplicationCommands() {
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     const payload = [...client.commands.values()].map(command => command.data.toJSON());
-    const route = Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID);
 
+    if (process.env.GUILD_ID) {
+        try {
+            const deployed = await rest.put(
+                Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+                { body: payload }
+            );
+            logger.info({
+                registered: deployed.length,
+                guildId: process.env.GUILD_ID,
+                commands: deployed.map(command => command.name)
+            }, 'Guild slash commands synchronized');
+        } catch (err) {
+            logger.error({ err }, 'Failed to synchronize guild slash commands');
+        }
+    } else {
+        logger.warn('GUILD_ID is not set; skipping automatic guild command synchronization');
+    }
+
+    // Keep global registrations aligned too, so stale bob-* commands are not
+    // left behind if the application was previously deployed globally.
     try {
-        const deployed = await rest.put(route, { body: payload });
+        const deployed = await rest.put(
+            Routes.applicationCommands(process.env.CLIENT_ID),
+            { body: payload }
+        );
         logger.info({
             registered: deployed.length,
-            guildId: process.env.GUILD_ID,
             commands: deployed.map(command => command.name)
-        }, 'Guild slash commands synchronized');
+        }, 'Global slash commands synchronized');
     } catch (err) {
-        logger.error({ err }, 'Failed to synchronize guild slash commands');
+        logger.error({ err }, 'Failed to synchronize global slash commands');
     }
 }
 
@@ -111,7 +127,7 @@ client.once(Events.ClientReady, async (readyClient) => {
     presenceTimer = setInterval(updatePresence, 30000);
     presenceTimer.unref?.();
     if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
-    await syncGuildCommands();
+    await syncApplicationCommands();
     markReady();
     discordEvents.inc({ event: 'ready' });
 });
