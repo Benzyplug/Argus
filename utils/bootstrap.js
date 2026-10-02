@@ -12,6 +12,41 @@ const HEALTH_DIR_NAME = '.health';
 const SWEEP_EXCLUDE_DEFAULT = Object.freeze([HEALTH_DIR_NAME]);
 const TEMP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
+const COMMAND_METADATA = Object.freeze({
+    'airport.js': { name: 'airport', description: 'Look up an airport by code or name.' },
+    'aviation.js': { name: 'flight', description: 'Track a flight and view current aviation details.' },
+    'blockchain.js': { name: 'blockchain', description: 'Inspect a cryptocurrency address and blockchain data.' },
+    'blockchain-detect.js': { name: 'crypto-detect', description: 'Identify the blockchain or cryptocurrency used by an address.' },
+    'chat.js': { name: 'ai', description: 'Chat with Argus AI.' },
+    'dns.js': { name: 'dns', description: 'Look up DNS records for a domain.' },
+    'dork.js': { name: 'dork', description: 'Build and run a search-engine dork for OSINT research.' },
+    'exif.js': { name: 'exif', description: 'Extract metadata from an image or file.' },
+    'extract-links.js': { name: 'extract-links', description: 'Extract links and URLs from a webpage.' },
+    'favicons.js': { name: 'favicon', description: 'Analyze a website favicon for reconnaissance.' },
+    'flight-number.js': { name: 'flight-number', description: 'Look up information for a flight number.' },
+    'generate-usernames.js': { name: 'username-gen', description: 'Generate username ideas from a name or keyword.' },
+    'ghunt.js': { name: 'google-investigate', description: 'Investigate a Google account with available OSINT data.' },
+    'health.js': { name: 'health', description: 'Check Argus health and system status.' },
+    'help.js': { name: 'help', description: 'Show all Argus commands and what they do.' },
+    'hostio.js': { name: 'host-lookup', description: 'Look up hosting and infrastructure information.' },
+    'jwt.js': { name: 'jwt', description: 'Inspect and analyze a JSON Web Token.' },
+    'linkook.js': { name: 'link-check', description: 'Analyze a URL and check its links and details.' },
+    'maigret.js': { name: 'maigret', description: 'Search for a username across online services.' },
+    'monitor.js': { name: 'monitor', description: 'Monitor a target for changes and activity.' },
+    'nike.js': { name: 'nike', description: 'Search Nike product and release information.' },
+    'nuclei.js': { name: 'nuclei-scan', description: 'Scan a target for known security findings with Nuclei.' },
+    'pappers.js': { name: 'company-search', description: 'Search public company and business information.' },
+    'recon-web.js': { name: 'web-recon', description: 'Run reconnaissance checks against a website.' },
+    'redirect-chain.js': { name: 'redirect-check', description: 'Trace a URL redirect chain and final destination.' },
+    'rekognition.js': { name: 'image-ai', description: 'Analyze an image with AI-powered image recognition.' },
+    'sherlock.js': { name: 'sherlock', description: 'Search for a username across social platforms.' },
+    'upload.js': { name: 'upload', description: 'Upload a file for Argus analysis.' },
+    'vessels.js': { name: 'vessel', description: 'Look up vessel and maritime information.' },
+    'vpic.js': { name: 'vehicle', description: 'Look up vehicle information by VIN.' },
+    'whoxy.js': { name: 'whois', description: 'Look up domain registration and WHOIS information.' },
+    'xeuledoc.js': { name: 'doc-meta', description: 'Inspect document metadata and properties.' }
+});
+
 function loadCommands(commandsPath) {
     const commands = new Collection();
     const stats = { loaded: 0, skipped: 0, failed: 0 };
@@ -26,6 +61,10 @@ function loadCommands(commandsPath) {
         try {
             const command = require(filePath);
             if ('data' in command && 'execute' in command) {
+                const metadata = COMMAND_METADATA[file];
+                if (metadata) {
+                    command.data.setName(metadata.name).setDescription(metadata.description);
+                }
                 commands.set(command.data.name, command);
                 stats.loaded++;
             } else {
