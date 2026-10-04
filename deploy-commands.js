@@ -1,7 +1,8 @@
 /**
- * Register the exact command set used by Argus at runtime.
- * This intentionally uses the shared bootstrap loader so command renames
- * and descriptions cannot drift between the bot and Discord registration.
+ * Argus slash-command deployment.
+ *
+ * Default: synchronize BOTH the configured guild and global application
+ * commands. This prevents old names from surviving in one scope.
  */
 
 require('dotenv').config();
@@ -10,7 +11,9 @@ const path = require('node:path');
 const bootstrap = require('./utils/bootstrap');
 
 const args = process.argv.slice(2);
-const isGlobalDeploy = args.includes('--global') || args.includes('-g');
+const globalOnly = args.includes('--global') || args.includes('-g');
+const guildOnly = args.includes('--guild');
+const deployAll = args.includes('--all') || (!globalOnly && !guildOnly);
 
 const { DISCORD_TOKEN, CLIENT_ID, GUILD_ID } = process.env;
 
@@ -18,8 +21,7 @@ if (!DISCORD_TOKEN || !CLIENT_ID) {
     console.error('❌ Missing DISCORD_TOKEN or CLIENT_ID.');
     process.exit(1);
 }
-
-if (!isGlobalDeploy && !GUILD_ID) {
+if ((deployAll || guildOnly) && !GUILD_ID) {
     console.error('❌ Missing GUILD_ID for guild deployment.');
     process.exit(1);
 }
@@ -30,48 +32,75 @@ function loadCommands() {
     const { commands, stats } = bootstrap.loadCommands(path.join(__dirname, 'commands'));
 
     if (stats.failed > 0) {
-        console.error(`❌ ${stats.failed} command file(s) failed to load. Refusing to deploy a partial command set.`);
+        console.error(`❌ ${stats.failed} command file(s) failed to load. Refusing partial deployment.`);
         process.exit(1);
     }
 
     const data = [...commands.values()].map(command => command.data.toJSON());
-
     if (data.length === 0) {
         console.error('❌ No valid commands found.');
         process.exit(1);
     }
 
-    console.log(`📁 Loaded ${data.length} Argus commands.`);
-    for (const command of data) {
-        console.log(`   ✅ /${command.name} — ${command.description}`);
+    const stale = data.filter(command => command.name.toLowerCase().startsWith('bob-'));
+    if (stale.length) {
+        console.error('❌ Refusing deployment: bob-* command names still exist in the payload.');
+        stale.forEach(command => console.error(`   /${command.name}`));
+        process.exit(1);
     }
 
+    console.log(`📁 Loaded ${data.length} clean Argus commands.`);
+    data.forEach(command => console.log(`   ✅ /${command.name} — ${command.description}`));
     return data;
+}
+
+async function syncScope(route, label, commands) {
+    console.log(`\n🔄 Synchronizing ${label}...`);
+
+    // Discord bulk-overwrite replaces the complete command set for this scope.
+    const deployed = await rest.put(route, { body: commands });
+
+    // Verify the actual registered list and remove any retired Bob command
+    // defensively if Discord reports one.
+    const current = await rest.get(route);
+    const stale = current.filter(command => command.name.toLowerCase().startsWith('bob-'));
+
+    for (const command of stale) {
+        await rest.delete(`${route}/${command.id}`);
+        console.log(`🗑️ Removed stale /${command.name} from ${label}`);
+    }
+
+    const cleanNames = current
+        .filter(command => !command.name.toLowerCase().startsWith('bob-'))
+        .map(command => command.name);
+
+    console.log(`✅ ${label}: ${cleanNames.length} clean command(s) registered.`);
+    return deployed;
 }
 
 async function main() {
     console.log('⌬ Argus command deployment');
-    console.log(`🎯 Target: ${isGlobalDeploy ? 'Global' : `Guild ${GUILD_ID}`}`);
+    console.log(`🎯 Mode: ${deployAll ? 'Guild + Global' : globalOnly ? 'Global only' : 'Guild only'}`);
 
     const commands = loadCommands();
 
-    const route = isGlobalDeploy
-        ? Routes.applicationCommands(CLIENT_ID)
-        : Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID);
-
-    const deployed = await rest.put(route, { body: commands });
-
-    // Verify the API now contains only the Argus command set. If an older
-    // bob-* command survived in the selected scope, remove it explicitly.
-    const current = await rest.get(route);
-    const stale = current.filter(command => command.name.startsWith('bob-'));
-    for (const command of stale) {
-        await rest.delete(`${route}/${command.id}`);
-        console.log(`🗑️ Removed stale /${command.name}`);
+    if (deployAll || guildOnly) {
+        await syncScope(
+            Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+            `guild ${GUILD_ID}`,
+            commands
+        );
     }
 
-    console.log(`\n✅ Registered ${deployed.length} command(s) ${isGlobalDeploy ? 'globally' : `in guild ${GUILD_ID}`}.`);
-    console.log('🔒 Verified command scope contains the current Argus command set.');
+    if (deployAll || globalOnly) {
+        await syncScope(
+            Routes.applicationCommands(CLIENT_ID),
+            'global',
+            commands
+        );
+    }
+
+    console.log('\n🎉 Argus command synchronization complete.');
 }
 
 main().catch(error => {
