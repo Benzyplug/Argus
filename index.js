@@ -114,7 +114,7 @@ function leaveUnauthorized(guild) {
 client.once(Events.ClientReady, async (readyClient) => {
     logger.info({ tag: readyClient.user.tag, guilds: readyClient.guilds.cache.size, commands: client.commands.size }, 'Argus online');
     updatePresence();
-    presenceTimer = setInterval(updatePresence, 3000);
+    presenceTimer = setInterval(updatePresence, 5000);
     presenceTimer.unref?.();
     if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
     await syncApplicationCommands();
