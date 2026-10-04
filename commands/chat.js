@@ -515,20 +515,18 @@ async function sendAIRequest(type, model, conversationId, prompt, apiKey) {
         ? 'https://api.1min.ai/api/chat-with-ai'
         : 'https://api.1min.ai/api/features';
 
+    const promptObject = {
+        prompt: prompt
+    };
+    if (conversationId) {
+        promptObject.conversationId = conversationId;
+    }
+
     const payload = isUnifiedChat
         ? {
             type: 'UNIFY_CHAT_WITH_AI',
             model: model,
-            promptObject: {
-                prompt: prompt,
-                conversationId: conversationId,
-                settings: {
-                    historySettings: {
-                        isMixed: false,
-                        historyMessageLimit: 10
-                    }
-                }
-            }
+            promptObject
         }
         : {
             type: type,
@@ -747,8 +745,8 @@ function formatAIResponse(aiResponse, model, responseType, isCode = false) {
     }
 
     // Remove provider-specific hidden-reasoning/artifact wrappers before Discord output.
-    content = content.replace(/<thinking>[\\s\\S]*?<\\/thinking>/gi, '').trim();
-    content = content.replace(/<artifact[^>]*>/gi, '').replace(/<\\/artifact>/gi, '').trim();
+    content = content.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim();
+    content = content.replace(/<artifact[^>]*>/gi, '').replace(/<\/artifact>/gi, '').trim();
 
     // Neutralize Discord mentions in LLM content before embedding in response
     content = neutralizeMentions(content);
@@ -808,7 +806,12 @@ async function handleChatError(interaction, error, subcommand) {
                 break;
             default:
                 errorMessage += `**🚨 API Error (${status})**\n`;
-                errorMessage += 'An error occurred communicating with the AI service.';
+                const apiMessage = error.response?.data?.message ||
+                    error.response?.data?.error ||
+                    error.response?.data?.detail;
+                errorMessage += apiMessage
+                    ? neutralizeMentions(String(apiMessage)).slice(0, 800)
+                    : 'An error occurred communicating with the AI service.';
         }
 
     } else if (error.code === 'ECONNABORTED') {
