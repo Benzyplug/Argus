@@ -165,7 +165,10 @@ function safeSpawnToFile(command, args = [], outputFilePath, options = {}) {
         proc.on('error', (error) => {
             clearTimeout(timeoutId);
             outStream.end();
-            reject(new Error(`Failed to start process: ${error.message}`));
+            const wrapped = new Error(`Failed to start process: ${error.message}`);
+            wrapped.code = error.code;
+            wrapped.cause = error;
+            reject(wrapped);
         });
     });
 }
