@@ -57,9 +57,8 @@ function updatePresence() {
     client.user.setPresence({
         status: 'dnd',
         activities: [{
-            name: 'ARGUS',
-            type: ActivityType.Custom,
-            state: message
+            name: message,
+            type: ActivityType.Watching
         }]
     }).catch(err => logger.warn({ err }, 'Failed to update Argus presence'));
 }
