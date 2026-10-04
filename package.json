@@ -4,7 +4,7 @@
   "description": "Argus — a Discord OSINT assistant for reconnaissance, investigation, and analysis",
   "main": "index.js",
   "scripts": {
-    "start": "node deploy-commands.js && node index.js",
+    "start": "node deploy-commands.js --all && node index.js",
     "dev": "nodemon index.js",
     "deploy": "node deploy-commands.js",
     "deploy:global": "node deploy-commands.js --global",
