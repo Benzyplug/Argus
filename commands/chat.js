@@ -346,7 +346,7 @@ async function handleAnalysisRequest(interaction, userId, apiKey) {
     const data = interaction.options.getString('data');
     const analysisType = interaction.options.getString('analysis-type') || 'summary';
 
-    const model = 'claude-sonnet-4-20250514'; // Use Claude for analysis tasks
+    const model = 'qwen3-vl-flash'; // Stable unified-chat model used by Argus
 
     // Get or create analysis conversation
     const conversations = userConversations.get(userId);
