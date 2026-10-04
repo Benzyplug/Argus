@@ -53,14 +53,21 @@ let presenceIndex = 0;
 let presenceTimer = null;
 
 function updatePresence() {
+    if (!client.user) return;
     const message = PRESENCE_MESSAGES[presenceIndex++ % PRESENCE_MESSAGES.length];
-    client.user.setPresence({
-        status: 'dnd',
-        activities: [{
-            name: message,
-            type: ActivityType.Watching
-        }]
-    }).catch(err => logger.warn({ err }, 'Failed to update Argus presence'));
+    try {
+        // setPresence is synchronous in discord.js; do not call .catch() on it.
+        client.user.setPresence({
+            status: 'dnd',
+            activities: [{
+                name: message,
+                type: ActivityType.Watching
+            }]
+        });
+        logger.debug({ message }, 'Argus presence updated');
+    } catch (err) {
+        logger.warn({ err, message }, 'Failed to update Argus presence');
+    }
 }
 
 async function syncApplicationCommands() {
