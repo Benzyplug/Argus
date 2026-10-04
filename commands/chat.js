@@ -746,6 +746,10 @@ function formatAIResponse(aiResponse, model, responseType, isCode = false) {
         content = JSON.stringify(aiResponse, null, 2);
     }
 
+    // Remove provider-specific hidden-reasoning/artifact wrappers before Discord output.
+    content = content.replace(/<thinking>[\\s\\S]*?<\\/thinking>/gi, '').trim();
+    content = content.replace(/<artifact[^>]*>/gi, '').replace(/<\\/artifact>/gi, '').trim();
+
     // Neutralize Discord mentions in LLM content before embedding in response
     content = neutralizeMentions(content);
 
