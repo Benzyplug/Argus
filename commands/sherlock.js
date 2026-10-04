@@ -92,7 +92,7 @@ module.exports = {
         try {
             
             // Build Sherlock command
-            const sherlockPath = process.env.SHERLOCK_PATH || 'sherlock';
+            const sherlockPath = process.env.SHERLOCK_PATH || 'python3';
 
             // Send initial status message
             await interaction.editReply({
@@ -132,14 +132,31 @@ module.exports = {
  * @returns {Promise<{ stderr: string, code: number }>}
  */
 async function executeSherlockScan(sherlockPath, username, outputFile, timeout, verbose, includeNsfw, _interaction) {
-    const args = [username];
-    if (verbose) args.push('--verbose');
-    if (!includeNsfw) args.push('--nsfw');
+    // Prefer an explicitly configured Sherlock executable. Otherwise run the
+    // official Python package as a module, which works even when its console
+    // script is not on PATH.
+    const configuredPath = process.env.SHERLOCK_PATH;
+    const command = configuredPath || 'python3';
+    const args = configuredPath
+        ? [username]
+        : ['-m', 'sherlock_project', username];
 
-    return safeSpawnToFile(sherlockPath, args, outputFile, {
+    if (verbose) args.push('--verbose');
+    if (includeNsfw) args.push('--nsfw');
+
+    const result = await safeSpawnToFile(command, args, outputFile, {
         timeout: timeout * 1000,
         env: { ...getSafeEnv(), PYTHONUNBUFFERED: '1' }
     });
+
+    if (result.code !== 0) {
+        const detail = result.stderr?.trim();
+        const error = new Error(detail || `Sherlock exited with code ${result.code}`);
+        error.code = result.code;
+        throw error;
+    }
+
+    return result;
 }
 
 /**
