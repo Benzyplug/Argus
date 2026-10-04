@@ -86,20 +86,6 @@ async function syncApplicationCommands() {
         logger.warn('GUILD_ID is not set; skipping automatic guild command synchronization');
     }
 
-    // Keep global registrations aligned too. Guild and global command scopes are
-    // separate in Discord, so both must be overwritten to remove stale commands.
-    try {
-        const deployed = await rest.put(
-            Routes.applicationCommands(process.env.CLIENT_ID),
-            { body: payload }
-        );
-        logger.info({
-            registered: deployed.length,
-            commands: deployed.map(command => command.name)
-        }, 'Global slash commands synchronized');
-    } catch (err) {
-        logger.error({ err }, 'Failed to synchronize global slash commands');
-    }
 }
 
 const client = new Client({
