@@ -83,7 +83,10 @@ function safeSpawn(command, args = [], options = {}) {
 
         proc.on('error', (error) => {
             clearTimeout(timeoutId);
-            reject(new Error(`Failed to start process: ${error.message}`));
+            const wrapped = new Error(`Failed to start process: ${error.message}`);
+            wrapped.code = error.code;
+            wrapped.cause = error;
+            reject(wrapped);
         });
     });
 }
