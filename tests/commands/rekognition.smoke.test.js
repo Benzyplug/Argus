@@ -70,7 +70,7 @@ function makeInteraction({ options = {}, ...rest } = {}) {
         user: { id: 'u1', tag: 'user#0001' },
         guild: { id: 'g1', name: 'guild' },
         member: { roles: { cache: { some: () => false } } },
-        commandName: 'bob-rekognition',
+        commandName: 'image-ai',
         options: {
             getString: (k) => options[k] ?? null,
             getInteger: (k) => options[k] ?? null,
@@ -97,7 +97,7 @@ const MOCK_ATTACHMENT = {
     contentType: 'image/jpeg'
 };
 
-describe('bob-rekognition smoke', () => {
+describe('image-ai smoke', () => {
     let cmd;
 
     beforeEach(() => {
@@ -124,9 +124,7 @@ describe('bob-rekognition smoke', () => {
     it('execute defers reply for analyze with image attachment', { timeout: 2000 }, async () => {
         const interaction = makeInteraction({
             options: {
-                __subcommand: 'analyze',
-                image: MOCK_ATTACHMENT,
-                features: 'labels'
+                __subcommand: 'analyze'
             }
         });
         await cmd.execute(interaction);
