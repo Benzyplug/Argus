@@ -20,18 +20,32 @@ function getAllowedRoles() {
 function checkPermission(interaction) {
     const commandName = interaction.commandName;
     const requiredPerm = RESTRICTED_COMMANDS[commandName];
-    if (!requiredPerm) return { allowed: true };
+    const allowedRoles = getAllowedRoles();
+
     if (!interaction.guild) {
         return { allowed: false, reason: 'This command can only be used in a server.' };
     }
-    if (interaction.memberPermissions?.has(requiredPerm)) {
-        return { allowed: true };
+
+    // When OSINT_ALLOWED_ROLES is configured, every Argus command is role-gated.
+    // Server administrators can still use Argus without the role.
+    if (allowedRoles.length > 0) {
+        const isAdministrator = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
+        const hasAllowedRole = interaction.member?.roles?.cache?.some(role => allowedRoles.includes(role.id));
+        if (!isAdministrator && !hasAllowedRole) {
+            return { allowed: false, reason: 'You need the Argus OSINT role to use this command.' };
+        }
     }
-    const allowedRoles = getAllowedRoles();
-    if (allowedRoles.length > 0 && interaction.member?.roles?.cache?.some(role => allowedRoles.includes(role.id))) {
-        return { allowed: true };
+
+    // Extra permission gates still apply to sensitive commands.
+    if (requiredPerm && !interaction.memberPermissions?.has(requiredPerm)) {
+        const hasAllowedRole = allowedRoles.length > 0 &&
+            interaction.member?.roles?.cache?.some(role => allowedRoles.includes(role.id));
+        if (!hasAllowedRole) {
+            return { allowed: false, reason: 'You do not have permission to use this command.' };
+        }
     }
-    return { allowed: false, reason: 'You do not have permission to use this command.' };
+
+    return { allowed: true };
 }
 
 module.exports = { checkPermission, RESTRICTED_COMMANDS };
