@@ -98,10 +98,10 @@ function styleEmbed(input, context = {}) {
   const banner = context.banner || process.env.EMBED_BANNER_URL;
   if (banner && !json.image?.url) { const url = safeUrl(banner); if (url) embed.setImage(url); }
   const title = json.title || '';
-  const isError = /(^|\\s)(❌|error|failed|failure)/i.test(title);
+  const isError = /(^|\s)(❌|error|failed|failure)/i.test(title);
   if (title && !/^[✅❌⚠️]/.test(title)) embed.setTitle(((isError ? '❌ ' : '✅ ') + title).slice(0, 256));
   let fields = decorateFields([...(json.fields || [])]);
-  if (!fields.some(f => /^(?:🕒|⏱️)\\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
+  if (!fields.some(f => /(?:🕒|⏱️)\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
   if (!fields.some(f => /📊\\s*Summary/i.test(f.name || '')) && fields.length < 25) fields.push({ name: '📊 Summary', value: fields.length + ' data section(s) returned by Argus.', inline: false });
   embed.setFields(fields.slice(0, 25));
   const verifiedNames = /^(airport|flight|flight-number|dns|host-lookup|whois|blockchain|crypto-detect|vehicle|vessel|company-search|web-recon)$/i;
@@ -114,7 +114,7 @@ function loadingEmbed(interaction, toolName) {
   const target = targetFromInteraction(interaction);
   return createArgusEmbed({
     title: '🔎 Searching...',
-    description: '**Target:** `' + (target || 'processing request') + '`\\n\\n▰▰▰▱▱▱ **Working**',
+    description: '**Target:** `' + (target || 'processing request') + '`\n\n▰▰▰▱▱▱ **Working**',
     fields: [{ name: '🛰️ Tool', value: '`' + (toolName || interaction.commandName || 'Argus') + '`', inline: true }],
     footer: 'Argus • Intelligence engine'
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
