@@ -52,6 +52,58 @@ const PRESENCE_MESSAGES = [
 let presenceIndex = 0;
 let presenceTimer = null;
 
+function installResponseStyling(interaction) {
+    if (interaction.__argusResponseStyling) return;
+    interaction.__argusResponseStyling = true;
+
+    const originalReply = interaction.reply.bind(interaction);
+    const originalEditReply = interaction.editReply.bind(interaction);
+    const originalFollowUp = interaction.followUp.bind(interaction);
+    const commandName = interaction.commandName || 'argus';
+
+    interaction.deferReply = async (options = {}) => {
+        const payload = {
+            embeds: [loadingEmbed(interaction, commandName)]
+        };
+        if (options.ephemeral !== undefined) payload.ephemeral = options.ephemeral;
+        if (options.flags !== undefined) payload.flags = options.flags;
+        return originalReply(payload);
+    };
+
+    interaction.reply = async (options = {}) => {
+        if (typeof options === 'string') return originalReply(options);
+        const payload = { ...options };
+        if (Array.isArray(payload.embeds)) {
+            payload.embeds = payload.embeds.map(embed => styleEmbed(embed, {
+                interaction, client, commandName
+            }));
+        }
+        return originalReply(payload);
+    };
+
+    interaction.editReply = async (options = {}) => {
+        if (typeof options === 'string') return originalEditReply(options);
+        const payload = { ...options };
+        if (Array.isArray(payload.embeds)) {
+            payload.embeds = payload.embeds.map(embed => styleEmbed(embed, {
+                interaction, client, commandName
+            }));
+        }
+        return originalEditReply(payload);
+    };
+
+    interaction.followUp = async (options = {}) => {
+        if (typeof options === 'string') return originalFollowUp(options);
+        const payload = { ...options };
+        if (Array.isArray(payload.embeds)) {
+            payload.embeds = payload.embeds.map(embed => styleEmbed(embed, {
+                interaction, client, commandName
+            }));
+        }
+        return originalFollowUp(payload);
+    };
+}
+
 function updatePresence() {
     if (!client.user) return;
     const message = PRESENCE_MESSAGES[presenceIndex++ % PRESENCE_MESSAGES.length];
@@ -61,7 +113,8 @@ function updatePresence() {
             status: 'dnd',
             activities: [{
                 name: message,
-                type: ActivityType.Watching
+                type: ActivityType.Custom,
+                state: message
             }]
         });
         logger.debug({ message }, 'Argus presence updated');
@@ -167,6 +220,8 @@ client.on(Events.InteractionCreate, async interaction => {
             return;
         }
     }
+
+    installResponseStyling(interaction);
 
     logger.info({
         command: cmdName,
