@@ -55,23 +55,38 @@ function loadCommands(commandsPath) {
         return { commands, stats };
     }
 
-    const files = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'));
+    const files = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js')).sort();
     for (const file of files) {
         const filePath = path.join(commandsPath, file);
         try {
             const command = require(filePath);
-            if ('data' in command && 'execute' in command) {
-                const metadata = COMMAND_METADATA[file];
-                if (metadata) {
-                    command.data.setName(metadata.name).setDescription(metadata.description);
-                }
-                commands.set(command.data.name, command);
-                stats.loaded++;
-            } else {
+            if (!command || !command.data || typeof command.execute !== 'function') {
                 stats.skipped++;
+                stats.failedFiles.push({ file, error: 'Missing command data or execute() function' });
+                continue;
             }
-        } catch {
+
+            const metadata = COMMAND_METADATA[file];
+            if (metadata) {
+                command.data.setName(metadata.name).setDescription(metadata.description);
+            }
+
+            // Validate the complete slash-command definition before Discord sync.
+            const json = command.data.toJSON();
+            if (!json.name || !json.description) {
+                throw new Error('Command data is missing name or description');
+            }
+            if (commands.has(json.name)) {
+                throw new Error(`Duplicate slash command name: /${json.name}`);
+            }
+
+            commands.set(json.name, command);
+            stats.loaded++;
+        } catch (error) {
+            const detail = error?.stack || error?.message || String(error);
             stats.failed++;
+            stats.failedFiles.push({ file, error: detail });
+            console.error(`[ARGUS COMMAND LOAD FAILED] ${file}\n${detail}`);
         }
     }
     return { commands, stats };
