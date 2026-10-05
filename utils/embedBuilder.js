@@ -110,6 +110,26 @@ function styleEmbed(input, context = {}) {
   return embed;
 }
 
+function stylePayload(payload, context = {}) {
+  if (typeof payload === 'string') {
+    return { embeds: [styleEmbed({ title: 'Argus Result', description: payload }, context)] };
+  }
+  const result = { ...(payload || {}) };
+  if (!Array.isArray(result.embeds) && typeof result.content === 'string' && result.content.trim()) {
+    const content = result.content;
+    const isError = /^\s*❌|\berror\b|\bfailed\b/i.test(content);
+    result.embeds = [styleEmbed({
+      title: isError ? '❌ Request failed' : 'Argus Result',
+      description: content.slice(0, 4096),
+      color: isError ? COLORS.error : COLORS[categoryFor(context.commandName)]
+    }, context)];
+    delete result.content;
+  } else if (Array.isArray(result.embeds)) {
+    result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
+  }
+  return result;
+}
+
 function loadingEmbed(interaction, toolName) {
   const target = targetFromInteraction(interaction);
   return createArgusEmbed({
