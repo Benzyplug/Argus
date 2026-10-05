@@ -110,9 +110,13 @@ function updatePresence() {
 }
 
 async function syncApplicationCommands() {
-    if (stats.failed > 0 || client.commands.size === 0) {
-        logger.error({ loaded: client.commands.size, failed: stats.failed, failedFiles: stats.failedFiles }, 'Skipping command synchronization because the command registry is incomplete.');
+    if (client.commands.size === 0) {
+        logger.error({ loaded: client.commands.size, failed: stats.failed, failedFiles: stats.failedFiles }, 'No slash commands loaded; refusing to overwrite Discord commands.');
         return false;
+    }
+
+    if (stats.failed > 0) {
+        logger.error({ loaded: client.commands.size, failed: stats.failed, failedFiles: stats.failedFiles }, 'Some command files failed to load; synchronizing the commands that loaded successfully so Argus does not lose its entire slash-command registry.');
     }
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     const payload = [...client.commands.values()].map(command => command.data.toJSON());
