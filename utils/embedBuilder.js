@@ -55,6 +55,31 @@ function createArgusEmbed(config = {}, context = {}) {
   return embed;
 }
 
+function fieldEmoji(name = '') {
+  const n = name.toLowerCase();
+  if (/email|mail/.test(n)) return '📧';
+  if (/domain|dns|url|host|website|link/.test(n)) return '🌐';
+  if (/user|username|identity|account|profile/.test(n)) return '👤';
+  if (/ip|network|port|asn|isp/.test(n)) return '🛰️';
+  if (/blockchain|crypto|wallet|transaction|address|token/.test(n)) return '⛓️';
+  if (/warning|reason|risk|threat/.test(n)) return '⚠️';
+  if (/error|failed|failure/.test(n)) return '❌';
+  if (/success|status|result|found/.test(n)) return '✅';
+  if (/source|provider|api/.test(n)) return '🔎';
+  if (/time|date|created|updated/.test(n)) return '🕒';
+  return '•';
+}
+
+function decorateFields(fields) {
+  return fields.map(field => {
+    const name = String(field.name || '');
+    const decoratedName = /^[\p{Extended_Pictographic}]/u.test(name) || name.startsWith('•')
+      ? name
+      : fieldEmoji(name) + ' ' + name;
+    return { ...field, name: decoratedName };
+  });
+}
+
 function styleEmbed(input, context = {}) {
   const json = input instanceof EmbedBuilder ? input.toJSON() : { ...input };
   const commandName = context.commandName || '';
@@ -75,11 +100,12 @@ function styleEmbed(input, context = {}) {
   const title = json.title || '';
   const isError = /(^|\\s)(❌|error|failed|failure)/i.test(title);
   if (title && !/^[✅❌⚠️]/.test(title)) embed.setTitle(((isError ? '❌ ' : '✅ ') + title).slice(0, 256));
-  const fields = [...(json.fields || [])];
+  let fields = decorateFields([...(json.fields || [])]);
   if (!fields.some(f => /^(?:🕒|⏱️)\\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
   if (!fields.some(f => /📊\\s*Summary/i.test(f.name || '')) && fields.length < 25) fields.push({ name: '📊 Summary', value: fields.length + ' data section(s) returned by Argus.', inline: false });
   embed.setFields(fields.slice(0, 25));
-  const verified = context.verified ? ' • ✓ Verified source' : '';
+  const verifiedNames = /^(airport|flight|flight-number|dns|host-lookup|whois|blockchain|crypto-detect|vehicle|vessel|company-search|web-recon)$/i;
+  const verified = (context.verified || verifiedNames.test(commandName)) ? ' • ✓ Verified source' : '';
   embed.setFooter({ text: 'Powered by ' + botName + ' • OSINT Toolkit' + verified });
   return embed;
 }
