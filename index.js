@@ -11,7 +11,7 @@ const { startHealthWriter, stopHealthWriter, markReady, markShuttingDown, writeS
 const { startMetricsServer, stopMetricsServer, commandDuration, commandErrors, ratelimitBlocks, discordEvents } = require('./utils/metrics');
 const { startHourlySweep, stopHourlySweep } = require('./utils/temp-sweep');
 const { pruneReports, startReportsSweep, stopReportsSweep } = require('./utils/reports');
-const { styleEmbed, loadingEmbed } = require('./utils/embedBuilder');
+const { stylePayload, loadingEmbed } = require('./utils/embedBuilder');
 
 require('./utils/config'); // validates env; exits(1) on missing required vars
 
@@ -73,34 +73,19 @@ function installResponseStyling(interaction) {
 
     interaction.reply = async (options = {}) => {
         if (typeof options === 'string') return originalReply(options);
-        const payload = { ...options };
-        if (Array.isArray(payload.embeds)) {
-            payload.embeds = payload.embeds.map(embed => styleEmbed(embed, {
-                interaction, client, commandName
-            }));
-        }
+        const payload = stylePayload(options, { interaction, client, commandName });
         return originalReply(payload);
     };
 
     interaction.editReply = async (options = {}) => {
         if (typeof options === 'string') return originalEditReply(options);
-        const payload = { ...options };
-        if (Array.isArray(payload.embeds)) {
-            payload.embeds = payload.embeds.map(embed => styleEmbed(embed, {
-                interaction, client, commandName
-            }));
-        }
+        const payload = stylePayload(options, { interaction, client, commandName });
         return originalEditReply(payload);
     };
 
     interaction.followUp = async (options = {}) => {
         if (typeof options === 'string') return originalFollowUp(options);
-        const payload = { ...options };
-        if (Array.isArray(payload.embeds)) {
-            payload.embeds = payload.embeds.map(embed => styleEmbed(embed, {
-                interaction, client, commandName
-            }));
-        }
+        const payload = stylePayload(options, { interaction, client, commandName });
         return originalFollowUp(payload);
     };
 }
