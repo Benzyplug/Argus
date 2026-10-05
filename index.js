@@ -11,6 +11,7 @@ const { startHealthWriter, stopHealthWriter, markReady, markShuttingDown, writeS
 const { startMetricsServer, stopMetricsServer, commandDuration, commandErrors, ratelimitBlocks, discordEvents } = require('./utils/metrics');
 const { startHourlySweep, stopHourlySweep } = require('./utils/temp-sweep');
 const { pruneReports, startReportsSweep, stopReportsSweep } = require('./utils/reports');
+const { styleEmbed, loadingEmbed } = require('./utils/embedBuilder');
 
 require('./utils/config'); // validates env; exits(1) on missing required vars
 
