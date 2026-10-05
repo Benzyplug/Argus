@@ -49,7 +49,7 @@ const COMMAND_METADATA = Object.freeze({
 
 function loadCommands(commandsPath) {
     const commands = new Collection();
-    const stats = { loaded: 0, skipped: 0, failed: 0 };
+    const stats = { loaded: 0, skipped: 0, failed: 0, failedFiles: [] };
 
     if (!fs.existsSync(commandsPath)) {
         return { commands, stats };
