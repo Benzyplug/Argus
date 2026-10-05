@@ -102,7 +102,10 @@ function styleEmbed(input, context = {}) {
   if (title && !/^[✅❌⚠️]/.test(title)) embed.setTitle(((isError ? '❌ ' : '✅ ') + title).slice(0, 256));
   let fields = decorateFields([...(json.fields || [])]);
   if (!fields.some(f => /(?:🕒|⏱️)\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
+  if (fields.length > 2 && fields.length < 24 && !fields.some(f => String(f.name || '').includes('\u200b'))) fields.push({ name: '\u200b', value: '\u200b', inline: false });
   if (!fields.some(f => /📊\\s*Summary/i.test(f.name || '')) && fields.length < 25) fields.push({ name: '📊 Summary', value: fields.length + ' data section(s) returned by Argus.', inline: false });
+  if (!fields.some(f => /What you can do next/i.test(f.name || '')) && fields.length < 25) fields.push({ name: '➡️ What you can do next', value: 'Try `/help` for related Argus commands.', inline: false });
+  if (isError && fields.length < 25) fields.push({ name: '🆘 Support', value: process.env.SUPPORT_URL || 'https://github.com/Benzyplug/Argus/issues', inline: false });
   embed.setFields(fields.slice(0, 25));
   const verifiedNames = /^(airport|flight|flight-number|dns|host-lookup|whois|blockchain|crypto-detect|vehicle|vessel|company-search|web-recon)$/i;
   const verified = (context.verified || verifiedNames.test(commandName)) ? ' • ✓ Verified source' : '';
