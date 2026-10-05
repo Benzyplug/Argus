@@ -36,7 +36,7 @@ function targetFromInteraction(interaction) {
 
 function faviconForTarget(target) {
   if (!target) return null;
-  const clean = String(target).replace(/^https?:\\/\\//, '').split('/')[0].split(':')[0];
+  const clean = String(target).replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
   if (!clean || !clean.includes('.')) return null;
   return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(clean) + '&sz=128';
 }
