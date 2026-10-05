@@ -143,4 +143,4 @@ function loadingEmbed(interaction, toolName) {
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
 }
 
-module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, loadingEmbed, faviconForTarget };
+module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget };
