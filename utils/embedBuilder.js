@@ -1,0 +1,97 @@
+const { EmbedBuilder } = require('discord.js');
+
+const COLORS = Object.freeze({
+  network: 0x3498db, identity: 0x9b59b6, blockchain: 0x2ecc71, aviation: 0x00a8ff,
+  security: 0xe74c3c, ai: 0x8e44ad, files: 0xf1c40f, general: 0x5865f2,
+  success: 0x2ecc71, error: 0xe74c3c, warning: 0xf1c40f
+});
+const ERROR_COLOR = COLORS.error;
+
+function categoryFor(commandName = '') {
+  const n = commandName.toLowerCase();
+  if (/dns|host|link|web|redirect|favicon|extract/.test(n)) return 'network';
+  if (/username|maigret|sherlock|google|whois|company|nike/.test(n)) return 'identity';
+  if (/blockchain|crypto|jwt/.test(n)) return 'blockchain';
+  if (/flight|airport|vessel|vehicle/.test(n)) return 'aviation';
+  if (/nuclei|security|recon/.test(n)) return 'security';
+  if (/ai|image/.test(n)) return 'ai';
+  if (/exif|upload|doc/.test(n)) return 'files';
+  return 'general';
+}
+
+function safeUrl(value) {
+  if (!value || typeof value !== 'string') return null;
+  try { return new URL(value).toString(); } catch { return null; }
+}
+
+function targetFromInteraction(interaction) {
+  try {
+    const opts = interaction.options?.data || [];
+    const values = [];
+    const walk = list => (list || []).forEach(o => { if (typeof o.value === 'string') values.push(o.value); walk(o.options); });
+    walk(opts);
+    return values[0] || null;
+  } catch { return null; }
+}
+
+function faviconForTarget(target) {
+  if (!target) return null;
+  const clean = String(target).replace(/^https?:\\/\\//, '').split('/')[0].split(':')[0];
+  if (!clean || !clean.includes('.')) return null;
+  return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(clean) + '&sz=128';
+}
+
+function createArgusEmbed(config = {}, context = {}) {
+  const embed = new EmbedBuilder().setColor(config.color ?? COLORS[categoryFor(context.commandName)] ?? COLORS.general);
+  if (config.title) embed.setTitle(String(config.title).slice(0, 256));
+  if (config.description) embed.setDescription(String(config.description).slice(0, 4096));
+  if (Array.isArray(config.fields) && config.fields.length) embed.addFields(config.fields.slice(0, 25));
+  if (config.url) { const url = safeUrl(config.url); if (url) embed.setURL(url); }
+  if (config.thumbnail) { const url = safeUrl(config.thumbnail); if (url) embed.setThumbnail(url); }
+  if (config.banner) { const url = safeUrl(config.banner); if (url) embed.setImage(url); }
+  if (config.author) embed.setAuthor(config.author);
+  if (config.footer) embed.setFooter({ text: String(config.footer).slice(0, 2048) });
+  if (config.timestamp !== false) embed.setTimestamp(config.timestamp instanceof Date ? config.timestamp : new Date());
+  return embed;
+}
+
+function styleEmbed(input, context = {}) {
+  const json = input instanceof EmbedBuilder ? input.toJSON() : { ...input };
+  const commandName = context.commandName || '';
+  const category = categoryFor(commandName);
+  const embed = new EmbedBuilder(json).setColor(json.color || COLORS[category]);
+  const bot = context.client?.user;
+  const botName = bot?.username || process.env.BOT_NAME || 'Argus';
+  const botIcon = bot?.displayAvatarURL?.({ extension: 'png', size: 64 });
+  if (!json.author) embed.setAuthor({ name: botName, ...(botIcon ? { iconURL: botIcon } : {}) });
+  const target = context.target || targetFromInteraction(context.interaction);
+  if (!json.thumbnail?.url) {
+    const targetIcon = faviconForTarget(target);
+    if (targetIcon) embed.setThumbnail(targetIcon);
+    else if (botIcon) embed.setThumbnail(botIcon);
+  }
+  const banner = context.banner || process.env.EMBED_BANNER_URL;
+  if (banner && !json.image?.url) { const url = safeUrl(banner); if (url) embed.setImage(url); }
+  const title = json.title || '';
+  const isError = /(^|\\s)(❌|error|failed|failure)/i.test(title);
+  if (title && !/^[✅❌⚠️]/.test(title)) embed.setTitle(((isError ? '❌ ' : '✅ ') + title).slice(0, 256));
+  const fields = [...(json.fields || [])];
+  if (!fields.some(f => /^(?:🕒|⏱️)\\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
+  if (!fields.some(f => /📊\\s*Summary/i.test(f.name || '')) && fields.length < 25) fields.push({ name: '📊 Summary', value: fields.length + ' data section(s) returned by Argus.', inline: false });
+  embed.setFields(fields.slice(0, 25));
+  const verified = context.verified ? ' • ✓ Verified source' : '';
+  embed.setFooter({ text: 'Powered by ' + botName + ' • OSINT Toolkit' + verified });
+  return embed;
+}
+
+function loadingEmbed(interaction, toolName) {
+  const target = targetFromInteraction(interaction);
+  return createArgusEmbed({
+    title: '🔎 Searching...',
+    description: '**Target:** `' + (target || 'processing request') + '`\\n\\n▰▰▰▱▱▱ **Working**',
+    fields: [{ name: '🛰️ Tool', value: '`' + (toolName || interaction.commandName || 'Argus') + '`', inline: true }],
+    footer: 'Argus • Intelligence engine'
+  }, { interaction, commandName: interaction.commandName, client: interaction.client });
+}
+
+module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, loadingEmbed, faviconForTarget };
