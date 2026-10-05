@@ -110,6 +110,10 @@ function updatePresence() {
 }
 
 async function syncApplicationCommands() {
+    if (stats.failed > 0 || client.commands.size === 0) {
+        logger.error({ loaded: client.commands.size, failed: stats.failed, failedFiles: stats.failedFiles }, 'Skipping command synchronization because the command registry is incomplete.');
+        return false;
+    }
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     const payload = [...client.commands.values()].map(command => command.data.toJSON());
 
@@ -140,7 +144,10 @@ const client = new Client({
 
 const { commands, stats } = bootstrap.loadCommands(path.join(__dirname, 'commands'));
 client.commands = commands;
-logger.info({ loaded: stats.loaded, skipped: stats.skipped, failed: stats.failed }, 'Commands loaded');
+logger.info({ loaded: stats.loaded, skipped: stats.skipped, failed: stats.failed, failedFiles: stats.failedFiles }, 'Commands loaded');
+if (stats.failed > 0) {
+    logger.error({ failedFiles: stats.failedFiles }, 'One or more command files failed to load; command synchronization is blocked to prevent wiping registered commands.');
+}
 
 const shutdownHandler = bootstrap.createShutdownHandler(client, {
     onSignal: (signal) => { logger.info({ signal }, 'shutdown signal received'); markShuttingDown(); },
