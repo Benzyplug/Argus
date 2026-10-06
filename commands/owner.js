@@ -1,6 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const pkg = require('../package.json');
 const { getArgusBanner } = require('../utils/embedBuilder');
+const OWNER_ID = '1317480616048070656';
+const OWNER_MENTION = `<@${OWNER_ID}>`;
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -25,14 +27,15 @@ module.exports = {
         { name: '◈ Role', value: '`Founder • Developer • Owner`', inline: true },
         { name: '◈ Bot', value: '`' + (bot?.username || 'Argus') + '`', inline: true },
         { name: '◈ Version', value: '`v' + pkg.version + '`', inline: true },
-        { name: '◈ Development', value: 'Discord bots • OSINT • automation\nNode.js • JavaScript • APIs', inline: false }
+        { name: '◈ Development', value: 'Discord bots • OSINT • automation\nNode.js • JavaScript • APIs', inline: false },
+        { name: '◈ Contact', value: `${OWNER_MENTION} • Message me for support or questions.`, inline: false }
       )
-      .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY @ẞ€ÑZ¥' })
+      .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0' })
       .setTimestamp();
 
     if (banner) embed.setImage(banner);
     else if (bot?.displayAvatarURL) embed.setThumbnail(bot.displayAvatarURL({ extension: 'png', size: 512 }));
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({ embeds: [embed], allowedMentions: { parse: [] } });
   }
 };
