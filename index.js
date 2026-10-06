@@ -139,6 +139,38 @@ const client = new Client({
     allowedMentions: { parse: ['users'], repliedUser: false }
 });
 
+// Discord gateway sessions are healthy in production, but the high-level
+// ClientReady dispatch is not reaching this process. For a single-guild bot,
+// perform registration immediately after login succeeds instead of depending
+// on the ready event.
+let startupReadyHandled = false;
+let commandSyncPromise = null;
+
+async function completeArgusStartup(source) {
+    if (startupReadyHandled) return;
+    startupReadyHandled = true;
+
+    console.log(`[ARGUS] STARTUP HANDLER — source=${source}`);
+
+    // Give discord.js a moment to finish populating the client after login.
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    updatePresence();
+    presenceTimer = setInterval(updatePresence, 3000);
+
+    try {
+        await syncApplicationCommands();
+        console.log('[ARGUS] COMMAND SYNC COMPLETE');
+    } catch (err) {
+        logger.error({ err }, 'Command sync failed after Discord login');
+        console.error('[ARGUS] COMMAND SYNC FAILED:', err?.stack || err);
+    }
+
+    presenceTimer.unref?.();
+    markReady();
+    discordEvents.inc({ event: 'ready' });
+}
+
 const commands = new Collection();
 const stats = { loaded: 0, skipped: 0, failed: 0, failedFiles: [] };
 client.commands = commands;
@@ -228,14 +260,14 @@ async function handleArgusReady(source = 'clientReady') {
     await finishStartup();
 }
 
-client.once(Events.ClientReady, () => handleArgusReady('clientReady'));
+client.once(Events.ClientReady, () => completeArgusStartup('clientReady'));
 
 // Fallback: discord.js exposes raw Gateway dispatch events through WebSocketManager.
 // DeployHatch is receiving and acknowledging heartbeats, so use the actual READY
 // dispatch to unblock command registration if the high-level ClientReady event stalls.
 client.ws.once('READY', () => {
-    console.log('[ARGUS] GATEWAY READY DISPATCH RECEIVED — using gateway fallback');
-    setTimeout(() => handleArgusReady('gatewayReady'), 250);
+    console.log('[ARGUS] GATEWAY READY DISPATCH RECEIVED');
+    setTimeout(() => completeArgusStartup('gatewayReady'), 250);
 });
 
 client.on('raw', (packet) => {
@@ -339,13 +371,14 @@ async function startArgus() {
     let timeoutHandle;
 
     try {
-        client.login(process.env.DISCORD_TOKEN)
-            .then(() => console.log('[ARGUS] DISCORD LOGIN COMPLETE'))
-            .catch((err) => {
-                console.error('[ARGUS] DISCORD LOGIN FAILED:', err?.stack || err);
-                logger.fatal({ err }, 'Discord login failed');
-                process.exit(1);
-            });
+        await client.login(process.env.DISCORD_TOKEN);
+        console.log('[ARGUS] DISCORD LOGIN COMPLETE');
+        // If the gateway connected but discord.js did not emit READY, login()
+        // still resolves once the token/session is accepted. Register commands
+        // here so startup cannot stall on an event dispatch.
+        if (!startupReadyHandled) {
+            await completeArgusStartup('loginResolved');
+        }
     } finally {
         if (timeoutHandle) clearTimeout(timeoutHandle);
     }
