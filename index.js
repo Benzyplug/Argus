@@ -147,7 +147,7 @@ function metadataCommandPayload() {
 }
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+    intents: [GatewayIntentBits.Guilds],
     waitGuildTimeout: 5000,
     allowedMentions: { parse: ['users'], repliedUser: false }
 });
@@ -364,15 +364,27 @@ async function startArgus() {
     console.log('[ARGUS] CONNECTING TO DISCORD GATEWAY...');
 
     try {
-        await client.login(process.env.DISCORD_TOKEN);
-        console.log('[ARGUS] LOGIN RESOLVED — registering slash commands directly...');
+        // Register commands through REST BEFORE touching the gateway.
+        // Discord command registration does not require a READY event.
+        // This is intentionally independent from gateway startup so a
+        // gateway READY delay cannot hide the slash-command menu.
+        console.log('[ARGUS] PRE-GATEWAY COMMAND REGISTRATION START...');
+        await syncApplicationCommands(metadataCommandPayload(), 'pre-gateway-metadata');
+        console.log('[ARGUS] PRE-GATEWAY COMMAND REGISTRATION COMPLETE — slash commands are visible');
 
-        // Do not depend on a Discord.js event for registration. The login
-        // promise resolving proves the gateway session is established.
-        await completeArgusStartup('loginResolved');
-        await initializeCommandsAfterGateway();
-
-        console.log('[ARGUS] STARTUP COMPLETE — bot online and slash commands registered');
+        // Gateway connection is started after the REST registration.
+        // Do not await login here: Discord.js resolves login only after the
+        // gateway READY lifecycle completes, and that must not block command
+        // registration or the worker from continuing to run.
+        void client.login(process.env.DISCORD_TOKEN).then(async () => {
+            console.log('[ARGUS] LOGIN RESOLVED — gateway session established');
+            await completeArgusStartup('loginResolved');
+            await initializeCommandsAfterGateway();
+            console.log('[ARGUS] STARTUP COMPLETE — bot online and slash commands registered');
+        }).catch((err) => {
+            console.error('[ARGUS] LOGIN FAILED:', err?.stack || err);
+            logger.fatal({ err }, 'Argus gateway login failed');
+        });
     } catch (err) {
         console.error('[ARGUS] LOGIN/COMMAND STARTUP FAILED:', err?.stack || err);
         throw err;
