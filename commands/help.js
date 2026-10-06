@@ -50,7 +50,7 @@ module.exports = {
     const embeds = [];
     let current = new EmbedBuilder()
       .setColor(0x5865f2)
-      .setTitle('⌬ ARGUS • HELP')
+      .setTitle('〢 Quick Reference')
       .setDescription(
         '**Open-source intelligence, reconnaissance & analysis.**\n\n' +
         'Use **`/commands`** for the interactive dashboard with category dropdowns, operation selectors and real input modals.'
