@@ -183,32 +183,59 @@ function leaveUnauthorized(guild) {
     }
 }
 
-client.once('ready', async (readyClient) => {
-    logger.info({
-        tag: readyClient.user.tag,
-        guilds: readyClient.guilds.cache.size,
-        commands: client.commands.size,
-        applicationId: readyClient.application?.id || readyClient.client?.application?.id || null
-    }, 'Argus online');
+let startupReadyHandled = false;
 
-    console.log(`[ARGUS] READY EVENT FIRED — guilds=${readyClient.guilds.cache.size} commands=${client.commands.size} application=${client.application?.id || 'unknown'}`);
+async function handleArgusReady(source = 'clientReady') {
+    if (startupReadyHandled) return;
+    startupReadyHandled = true;
 
-    updatePresence();
-    presenceTimer = setInterval(updatePresence, 3000);
+    const readyClient = client;
+    const finishStartup = async () => {
+        logger.info({
+            tag: readyClient.user?.tag || 'unknown',
+            guilds: readyClient.guilds.cache.size,
+            commands: client.commands.size,
+            applicationId: readyClient.application?.id || null,
+            source
+        }, 'Argus online');
 
-    console.log(`[ARGUS] READY — commands loaded=${client.commands.size}; syncing application commands...`);
-    try {
-        await syncApplicationCommands();
-        console.log('[ARGUS] COMMAND SYNC COMPLETE');
-    } catch (err) {
-        logger.error({ err }, 'Command sync failed after Discord login');
-        console.error('[ARGUS] COMMAND SYNC FAILED:', err?.stack || err);
+        console.log(`[ARGUS] READY — source=${source} guilds=${readyClient.guilds.cache.size} commands=${client.commands.size} application=${client.application?.id || 'unknown'}`);
+
+        updatePresence();
+        presenceTimer = setInterval(updatePresence, 3000);
+
+        console.log(`[ARGUS] READY — commands loaded=${client.commands.size}; syncing application commands...`);
+        try {
+            await syncApplicationCommands();
+            console.log('[ARGUS] COMMAND SYNC COMPLETE');
+        } catch (err) {
+            logger.error({ err }, 'Command sync failed after Discord login');
+            console.error('[ARGUS] COMMAND SYNC FAILED:', err?.stack || err);
+        }
+
+        presenceTimer.unref?.();
+        if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
+        markReady();
+        discordEvents.inc({ event: 'ready' });
+    };
+
+    // The gateway READY packet can arrive before discord.js finishes its
+    // ClientReady bookkeeping. Give discord.js one tick to populate user/application.
+    if (!readyClient.user) {
+        await new Promise(resolve => setTimeout(resolve, 250));
     }
 
-    presenceTimer.unref?.();
-    if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
-    markReady();
-    discordEvents.inc({ event: 'ready' });
+    await finishStartup();
+}
+
+client.once(Events.ClientReady, () => handleArgusReady('clientReady'));
+
+// Fallback: discord.js exposes raw Gateway dispatch events through WebSocketManager.
+// DeployHatch is receiving and acknowledging heartbeats, so use the actual READY
+// dispatch to unblock command registration if the high-level ClientReady event stalls.
+client.ws.once('READY', () => {
+    console.log('[ARGUS] GATEWAY READY DISPATCH RECEIVED — using gateway fallback');
+    setTimeout(() => handleArgusReady('gatewayReady'), 250);
 });
 
 client.on('raw', (packet) => {
@@ -312,16 +339,13 @@ async function startArgus() {
     let timeoutHandle;
 
     try {
-        await Promise.race([
-            client.login(process.env.DISCORD_TOKEN),
-            new Promise((_, reject) => {
-                timeoutHandle = setTimeout(() => {
-                    reject(new Error(`Discord login timed out after ${LOGIN_TIMEOUT_MS / 1000}s`));
-                }, LOGIN_TIMEOUT_MS);
-            })
-        ]);
-
-        console.log('[ARGUS] DISCORD LOGIN COMPLETE');
+        client.login(process.env.DISCORD_TOKEN)
+            .then(() => console.log('[ARGUS] DISCORD LOGIN COMPLETE'))
+            .catch((err) => {
+                console.error('[ARGUS] DISCORD LOGIN FAILED:', err?.stack || err);
+                logger.fatal({ err }, 'Discord login failed');
+                process.exit(1);
+            });
     } finally {
         if (timeoutHandle) clearTimeout(timeoutHandle);
     }
