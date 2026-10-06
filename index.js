@@ -364,7 +364,23 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 
-    if (!interaction.isChatInputCommand()) return;
+    // Interactive /commands dashboard components and modals are handled before chat commands.
+    if (!interaction.isChatInputCommand()) {
+        const dashboard = client.commands.get('commands');
+        if (dashboard?.handleInteraction) {
+            try {
+                const handled = await dashboard.handleInteraction(interaction);
+                if (handled) return;
+            } catch (error) {
+                logger.error({ err: error }, 'Interactive Argus component failed');
+                try {
+                    if (interaction.replied || interaction.deferred) await interaction.followUp({ content: '❌ The Argus interactive panel encountered an error.', flags: MessageFlags.Ephemeral });
+                    else await interaction.reply({ content: '❌ The Argus interactive panel encountered an error.', flags: MessageFlags.Ephemeral });
+                } catch {}
+            }
+        }
+        return;
+    }
 
     const cmdName = interaction.commandName;
     const command = client.commands.get(cmdName);
