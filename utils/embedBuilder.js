@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const pkg = require('../package.json');
 
 const COLORS = Object.freeze({
   network: 0x3498db, identity: 0x9b59b6, blockchain: 0x2ecc71, aviation: 0x00a8ff,
@@ -95,7 +96,7 @@ function styleEmbed(input, context = {}) {
     if (targetIcon) embed.setThumbnail(targetIcon);
     else if (botIcon) embed.setThumbnail(botIcon);
   }
-  const banner = context.banner || process.env.EMBED_BANNER_URL;
+  const banner = context.banner || process.env.EMBED_BANNER_URL || context.client?.application?.coverURL?.({ extension: 'png', size: 1024 });
   if (banner && !json.image?.url) { const url = safeUrl(banner); if (url) embed.setImage(url); }
   const title = json.title || '';
   const isError = /(^|\s)(❌|error|failed|failure)/i.test(title);
@@ -109,7 +110,7 @@ function styleEmbed(input, context = {}) {
   embed.setFields(fields.slice(0, 25));
   const verifiedNames = /^(airport|flight|flight-number|dns|host-lookup|whois|blockchain|crypto-detect|vehicle|vessel|company-search|web-recon)$/i;
   const verified = (context.verified || verifiedNames.test(commandName)) ? ' • ✓ Verified source' : '';
-  embed.setFooter({ text: 'Powered by ' + botName + ' • OSINT Toolkit' + verified });
+  embed.setFooter({ text: 'Powered by ' + botName + ' • OSINT Toolkit' + verified + ' • v' + pkg.version + ' • Owner: Lmao_2.0' });
   return embed;
 }
 
