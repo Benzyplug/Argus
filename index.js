@@ -216,14 +216,6 @@ async function syncApplicationCommands(payload, label = 'loaded') {
     }
 }
 
-function metadataCommandPayload() {
-    return Object.values(bootstrap.COMMAND_METADATA).map(({ name, description }) => ({
-        name,
-        description,
-        type: 1
-    }));
-}
-
 const client = new Client({
     intents: [GatewayIntentBits.Guilds],
     waitGuildTimeout: 5000,
@@ -247,36 +239,6 @@ async function completeArgusStartup(source) {
 const commands = new Collection();
 const stats = { loaded: 0, skipped: 0, failed: 0, failedFiles: [] };
 client.commands = commands;
-
-async function initializeCommandsAfterGateway() {
-    if (commandInitializationStarted) return;
-    commandInitializationStarted = true;
-    console.log('[ARGUS] Gateway is online — loading command modules now...');
-
-    try {
-        // Register lightweight command definitions first. This guarantees the
-        // slash-command menu is populated even if a command module is slow to load.
-        await syncApplicationCommands(metadataCommandPayload(), 'metadata');
-        console.log('[ARGUS] METADATA COMMAND SYNC COMPLETE — slash commands are now visible');
-
-        const loadedCommands = bootstrap.loadCommands(path.join(__dirname, 'commands'));
-        for (const [name, command] of loadedCommands.commands) {
-            client.commands.set(name, command);
-        }
-        Object.assign(stats, loadedCommands.stats);
-        console.log(`[ARGUS] COMMAND LOAD — loaded=${stats.loaded} skipped=${stats.skipped} failed=${stats.failed}`);
-
-        if (stats.failed > 0) {
-            console.error('[ARGUS] COMMAND LOAD FAILURES:', JSON.stringify(stats.failedFiles));
-        } else {
-            await syncApplicationCommands([...client.commands.values()].map(command => command.data.toJSON()), 'modules');
-            console.log('[ARGUS] COMMAND SYNC COMPLETE — all Argus commands are registered');
-        }
-    } catch (err) {
-        logger.error({ err }, 'Command initialization failed after gateway connection');
-        console.error('[ARGUS] COMMAND INITIALIZATION FAILED:', err?.stack || err);
-    }
-}
 
 console.log('[ARGUS] Core modules loaded — connecting to Discord before loading command modules...');
 
@@ -364,19 +326,20 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 
-    // Interactive /commands dashboard components and modals are handled before chat commands.
+    // Route native component/modal interactions to the command that owns them.
     if (!interaction.isChatInputCommand()) {
-        const dashboard = client.commands.get('commands');
-        if (dashboard?.handleInteraction) {
+        for (const command of client.commands.values()) {
+            if (typeof command.handleInteraction !== 'function') continue;
             try {
-                const handled = await dashboard.handleInteraction(interaction);
+                const handled = await command.handleInteraction(interaction);
                 if (handled) return;
             } catch (error) {
-                logger.error({ err: error }, 'Interactive Argus component failed');
+                logger.error({ err: error, customId: interaction.customId }, 'Argus command interaction failed');
                 try {
-                    if (interaction.replied || interaction.deferred) await interaction.followUp({ content: '❌ The Argus interactive panel encountered an error.', flags: MessageFlags.Ephemeral });
-                    else await interaction.reply({ content: '❌ The Argus interactive panel encountered an error.', flags: MessageFlags.Ephemeral });
+                    if (interaction.replied || interaction.deferred) await interaction.followUp({ content: '❌ The operation could not be completed.', flags: MessageFlags.Ephemeral });
+                    else await interaction.reply({ content: '❌ The operation could not be completed.', flags: MessageFlags.Ephemeral });
                 } catch {}
+                return;
             }
         }
         return;
