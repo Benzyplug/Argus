@@ -157,14 +157,6 @@ async function completeArgusStartup(source) {
     updatePresence();
     presenceTimer = setInterval(updatePresence, 3000);
 
-    try {
-        await syncApplicationCommands();
-        console.log('[ARGUS] COMMAND SYNC COMPLETE');
-    } catch (err) {
-        logger.error({ err }, 'Command sync failed after Discord login');
-        console.error('[ARGUS] COMMAND SYNC FAILED:', err?.stack || err);
-    }
-
     presenceTimer.unref?.();
     markReady();
     discordEvents.inc({ event: 'ready' });
@@ -192,7 +184,7 @@ try {
         throw new Error(`Command loading failed for ${stats.failed} file(s)`);
     }
 
-    console.log('[ARGUS] COMMAND MODULES READY — connecting to Discord...');
+    console.log('[ARGUS] COMMAND MODULES READY — registering commands before Discord gateway login...');
 } catch (err) {
     logger.fatal({ err }, 'Command loading failed during startup');
     console.error('[ARGUS] COMMAND STARTUP FAILED:', err?.stack || err);
@@ -351,17 +343,25 @@ async function startArgus() {
         commandCount: client.commands.size
     }, 'Starting Argus...');
 
-    console.log(`[ARGUS] STARTING — commands=${client.commands.size}; connecting to Discord...`);
+    console.log(`[ARGUS] STARTING — commands=${client.commands.size}; registering commands before connecting to Discord...`);
 
     try {
-        await client.login(process.env.DISCORD_TOKEN);
-        console.log('[ARGUS] DISCORD LOGIN COMPLETE');
+        await syncApplicationCommands();
+        console.log('[ARGUS] COMMAND SYNC COMPLETE — commands are registered before gateway login');
 
-        if (!startupReadyHandled) {
-            await completeArgusStartup('loginResolved');
-        }
+        console.log('[ARGUS] CONNECTING TO DISCORD GATEWAY...');
+
+        // Do not await login. The gateway is receiving heartbeats, but the
+        // discord.js login promise is not resolving in this environment.
+        // Keeping the connection alive lets discord.js process gateway events
+        // while command registration is already complete.
+        client.login(process.env.DISCORD_TOKEN).catch(err => {
+            console.error('[ARGUS] LOGIN FAILED:', err?.stack || err);
+            logger.fatal({ err }, 'Argus gateway login failed');
+            process.exit(1);
+        });
     } catch (err) {
-        console.error('[ARGUS] LOGIN FAILED:', err?.stack || err);
+        console.error('[ARGUS] STARTUP FAILED BEFORE GATEWAY:', err?.stack || err);
         throw err;
     }
 }
