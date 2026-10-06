@@ -125,7 +125,64 @@ async function syncApplicationCommands(payload, label = 'loaded') {
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
+        // Always GET first. Only bulk-overwrite when the registered command
+        // definitions actually differ. This prevents unnecessary command
+        // creates on every restart and avoids burning Discord's daily create
+        // allowance.
+        console.log('[ARGUS] DISCORD REST GET START — checking existing commands...');
+        const existingController = new AbortController();
+        const existingTimeout = setTimeout(() => existingController.abort(), 10000);
+
+        let existingCommands;
+        try {
+            const existingResponse = await fetch(endpoint, {
+                method: 'GET',
+                headers: { Authorization: `Bot ${token}` },
+                signal: existingController.signal
+            });
+            const existingText = await existingResponse.text();
+            let existingBody;
+            try { existingBody = JSON.parse(existingText); } catch { existingBody = existingText; }
+
+            if (!existingResponse.ok) {
+                throw new Error(`Discord REST GET ${existingResponse.status} ${existingResponse.statusText}: ${typeof existingBody === 'string' ? existingBody : JSON.stringify(existingBody)}`);
+            }
+
+            existingCommands = Array.isArray(existingBody) ? existingBody : [];
+        } finally {
+            clearTimeout(existingTimeout);
+        }
+
+        const comparable = (command) => {
+            const copy = JSON.parse(JSON.stringify(command));
+            delete copy.id;
+            delete copy.application_id;
+            delete copy.guild_id;
+            delete copy.version;
+            return copy;
+        };
+
+        const desiredComparable = payload.map(comparable);
+        const existingComparable = existingCommands.map(comparable);
+
+        const sameCommands =
+            existingComparable.length === desiredComparable.length &&
+            existingComparable.every((command, index) =>
+                JSON.stringify(command) === JSON.stringify(desiredComparable[index])
+            );
+
+        const existingNames = existingCommands.map(command => command.name);
+        console.log(`[ARGUS] EXISTING COMMANDS — ${existingCommands.length}`);
+        console.log(`[ARGUS] EXISTING NAMES — ${existingNames.join(', ')}`);
+
+        if (sameCommands) {
+            console.log('[ARGUS] COMMANDS ALREADY UP TO DATE — no Discord command creates needed');
+            return true;
+        }
+
+        console.log(`[ARGUS] COMMANDS DIFFER — registering ${payload.length} commands...`);
         console.log('[ARGUS] DISCORD REST PUT START...');
+
         const response = await fetch(endpoint, {
             method: 'PUT',
             headers: {
@@ -147,30 +204,6 @@ async function syncApplicationCommands(payload, label = 'loaded') {
         const deployedNames = Array.isArray(body) ? body.map(command => command.name) : [];
         console.log(`[ARGUS] COMMAND REGISTERED — ${deployedNames.length}`);
         console.log(`[ARGUS] COMMAND NAMES — ${deployedNames.join(', ')}`);
-
-        console.log('[ARGUS] DISCORD REST VERIFY START...');
-        const verifyController = new AbortController();
-        const verifyTimeout = setTimeout(() => verifyController.abort(), 10000);
-        try {
-            const verifiedResponse = await fetch(endpoint, {
-                method: 'GET',
-                headers: { Authorization: `Bot ${token}` },
-                signal: verifyController.signal
-            });
-            const verifiedText = await verifiedResponse.text();
-            let verifiedBody;
-            try { verifiedBody = JSON.parse(verifiedText); } catch { verifiedBody = verifiedText; }
-
-            if (!verifiedResponse.ok) {
-                throw new Error(`Discord REST verify ${verifiedResponse.status} ${verifiedResponse.statusText}: ${typeof verifiedBody === 'string' ? verifiedBody : JSON.stringify(verifiedBody)}`);
-            }
-
-            const verifiedNames = Array.isArray(verifiedBody) ? verifiedBody.map(command => command.name) : [];
-            console.log(`[ARGUS] COMMAND VERIFY — ${verifiedNames.length}`);
-            console.log(`[ARGUS] VERIFIED NAMES — ${verifiedNames.join(', ')}`);
-        } finally {
-            clearTimeout(verifyTimeout);
-        }
 
         return true;
     } catch (err) {
