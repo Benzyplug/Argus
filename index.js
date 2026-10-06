@@ -108,18 +108,17 @@ function updatePresence() {
     }
 }
 
-async function syncApplicationCommands() {
+async function syncApplicationCommands(payload, label = 'loaded') {
     const guildId = process.env.GUILD_ID;
     const applicationId = process.env.CLIENT_ID;
 
-    console.log(`[ARGUS] COMMAND SYNC START — GUILD_ID=${guildId || 'MISSING'} CLIENT_ID=${applicationId || 'MISSING'} loaded=${client.commands.size}`);
+    console.log(`[ARGUS] COMMAND SYNC START — GUILD_ID=${guildId || 'MISSING'} CLIENT_ID=${applicationId || 'MISSING'} source=${label} count=${payload.length}`);
 
     if (!guildId) throw new Error('GUILD_ID is missing from the environment');
     if (!applicationId) throw new Error('CLIENT_ID is missing from the environment');
     if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN is missing from the environment');
-    if (client.commands.size === 0) throw new Error('No slash commands were loaded');
+    if (!payload.length) throw new Error('No slash commands were prepared');
 
-    const payload = [...client.commands.values()].map(command => command.data.toJSON());
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     const route = Routes.applicationGuildCommands(applicationId, guildId);
 
@@ -137,6 +136,14 @@ async function syncApplicationCommands() {
     console.log(`[ARGUS] VERIFIED NAMES — ${verifiedNames.join(', ')}`);
 
     return true;
+}
+
+function metadataCommandPayload() {
+    return Object.values(bootstrap.COMMAND_METADATA).map(({ name, description }) => ({
+        name,
+        description,
+        type: 1
+    }));
 }
 
 const client = new Client({
@@ -169,6 +176,11 @@ async function initializeCommandsAfterGateway() {
     console.log('[ARGUS] Gateway is online — loading command modules now...');
 
     try {
+        // Register lightweight command definitions first. This guarantees the
+        // slash-command menu is populated even if a command module is slow to load.
+        await syncApplicationCommands(metadataCommandPayload(), 'metadata');
+        console.log('[ARGUS] METADATA COMMAND SYNC COMPLETE — slash commands are now visible');
+
         const loadedCommands = bootstrap.loadCommands(path.join(__dirname, 'commands'));
         for (const [name, command] of loadedCommands.commands) {
             client.commands.set(name, command);
@@ -178,11 +190,10 @@ async function initializeCommandsAfterGateway() {
 
         if (stats.failed > 0) {
             console.error('[ARGUS] COMMAND LOAD FAILURES:', JSON.stringify(stats.failedFiles));
-            throw new Error(`Command loading failed for ${stats.failed} file(s)`);
+        } else {
+            await syncApplicationCommands([...client.commands.values()].map(command => command.data.toJSON()), 'modules');
+            console.log('[ARGUS] COMMAND SYNC COMPLETE — all Argus commands are registered');
         }
-
-        await syncApplicationCommands();
-        console.log('[ARGUS] COMMAND SYNC COMPLETE — all Argus commands are registered');
     } catch (err) {
         logger.error({ err }, 'Command initialization failed after gateway connection');
         console.error('[ARGUS] COMMAND INITIALIZATION FAILED:', err?.stack || err);
