@@ -141,6 +141,7 @@ async function syncApplicationCommands() {
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+    waitGuildTimeout: 5000,
     allowedMentions: { parse: ['users'], repliedUser: false }
 });
 
@@ -216,11 +217,15 @@ function leaveUnauthorized(guild) {
     }
 }
 
-client.once(Events.ClientReady, () => completeArgusStartup('clientReady'));
+client.once('clientReady', () => completeArgusStartup('clientReady'));
 
 client.ws.once('READY', () => {
     console.log('[ARGUS] GATEWAY READY DISPATCH RECEIVED');
     setTimeout(() => completeArgusStartup('gatewayReady'), 250);
+});
+
+client.ws.on('READY', () => {
+    console.log('[ARGUS] WEBSOCKET READY RECEIVED');
 });
 
 client.on('raw', (packet) => {
