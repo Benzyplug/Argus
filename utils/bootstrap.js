@@ -56,13 +56,18 @@ function loadCommands(commandsPath) {
     }
 
     const files = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js')).sort();
+
     for (const file of files) {
         const filePath = path.join(commandsPath, file);
+        console.log(`[ARGUS COMMAND LOAD] Loading ${file}...`);
+
         try {
             const command = require(filePath);
+
             if (!command || !command.data || typeof command.execute !== 'function') {
                 stats.skipped++;
                 stats.failedFiles.push({ file, error: 'Missing command data or execute() function' });
+                console.error(`[ARGUS COMMAND LOAD SKIPPED] ${file} — missing command data or execute()`);
                 continue;
             }
 
@@ -71,17 +76,18 @@ function loadCommands(commandsPath) {
                 command.data.setName(metadata.name).setDescription(metadata.description);
             }
 
-            // Validate the complete slash-command definition before Discord sync.
             const json = command.data.toJSON();
             if (!json.name || !json.description) {
                 throw new Error('Command data is missing name or description');
             }
+
             if (commands.has(json.name)) {
                 throw new Error(`Duplicate slash command name: /${json.name}`);
             }
 
             commands.set(json.name, command);
             stats.loaded++;
+            console.log(`[ARGUS COMMAND LOAD] Loaded ${file} as /${json.name}`);
         } catch (error) {
             const detail = error?.stack || error?.message || String(error);
             stats.failed++;
@@ -89,6 +95,8 @@ function loadCommands(commandsPath) {
             console.error(`[ARGUS COMMAND LOAD FAILED] ${file}\n${detail}`);
         }
     }
+
+    console.log(`[ARGUS COMMAND LOAD COMPLETE] loaded=${stats.loaded} skipped=${stats.skipped} failed=${stats.failed}`);
     return { commands, stats };
 }
 
@@ -105,8 +113,6 @@ function sweepBootTemp(tempDir, exclude = SWEEP_EXCLUDE_DEFAULT, maxAgeMs = TEMP
     const now = Date.now();
     let swept = 0, kept = 0;
 
-    // A boot sweep must never crash the process — if the dir is unreadable or
-    // not a directory (ENOTDIR/EACCES under hardened containers), bail quietly.
     let entries;
     try {
         entries = fs.readdirSync(tempDir);
@@ -142,17 +148,17 @@ function createShutdownHandler(client, hooks = {}) {
         if (invoked) return;
         invoked = true;
         if (typeof hooks.onSignal === 'function') {
-            try { hooks.onSignal(signal); } catch { /* hook errors must not block shutdown */ }
+            try { hooks.onSignal(signal); } catch {}
         }
         for (const cmd of client.commands?.values?.() || []) {
             if (typeof cmd.shutdown === 'function') {
-                try { cmd.shutdown(); } catch { /* command shutdown errors logged by hook */ }
+                try { cmd.shutdown(); } catch {}
             }
         }
         if (typeof hooks.onDrain === 'function') {
-            try { Promise.resolve(hooks.onDrain()).catch(() => {}); } catch { /* hook errors must not block shutdown */ }
+            try { Promise.resolve(hooks.onDrain()).catch(() => {}); } catch {}
         }
-        try { client.destroy(); } catch { /* already destroyed */ }
+        try { client.destroy(); } catch {}
         setTimeout(() => process.exit(0), 1000).unref();
     };
 }
