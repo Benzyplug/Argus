@@ -136,7 +136,8 @@ async function syncApplicationCommands() {
                 commands: [...verified.values()].map(command => command.name)
             }, 'Guild slash commands synchronized and verified');
         } catch (err) {
-            logger.error({ err }, 'Failed to synchronize guild slash commands');
+            logger.error({ err, guildId: process.env.GUILD_ID, applicationId: client.application?.id, expectedCommands: payload.map(command => command.name) }, 'FAILED to synchronize guild slash commands');
+            console.error('[ARGUS] COMMAND SYNC FAILED:', err?.message || err);
         }
     } else {
         logger.warn('GUILD_ID is not set; skipping automatic guild command synchronization');
@@ -171,7 +172,8 @@ function leaveUnauthorized(guild) {
 }
 
 client.once(Events.ClientReady, async (readyClient) => {
-    logger.info({ tag: readyClient.user.tag, guilds: readyClient.guilds.cache.size, commands: client.commands.size }, 'Argus online');
+    logger.info({ tag: readyClient.user.tag, guilds: readyClient.guilds.cache.size, commands: client.commands.size, applicationId: readyClient.application?.id || readyClient.client?.application?.id || null }, 'Argus online');
+    console.log(`[ARGUS] READY — guilds=${readyClient.guilds.cache.size} commands=${client.commands.size} application=${client.application?.id || 'unknown'}`);
     updatePresence();
     presenceTimer = setInterval(updatePresence, 3000);
     presenceTimer.unref?.();
@@ -251,8 +253,11 @@ client.on(Events.InteractionCreate, async interaction => {
 process.on('uncaughtException', (err) => { logger.fatal({ err }, 'uncaughtException'); process.exit(1); });
 process.on('unhandledRejection', (reason) => { logger.fatal({ reason }, 'unhandledRejection'); process.exit(1); });
 
-logger.info('Starting Argus...');
-client.login(process.env.DISCORD_TOKEN).catch((err) => {
+logger.info({ guildId: process.env.GUILD_ID || null, clientId: process.env.CLIENT_ID || null, commandCount: client.commands.size }, 'Starting Argus...');
+console.log(`[ARGUS] Starting Argus — ${client.commands.size} commands loaded`);
+client.login(process.env.DISCORD_TOKEN).then(() => {
+    console.log(`[ARGUS] Discord login promise resolved — application=${client.application?.id || 'pending'}`);
+}).catch((err) => {
     logger.fatal({ err }, 'Discord login failed');
     process.exit(1);
 });
