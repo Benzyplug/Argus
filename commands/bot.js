@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, version: discordJsVersion } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, version: discordJsVersion } = require('discord.js');
 const pkg = require('../package.json');
 const { getArgusBanner } = require('../utils/embedBuilder');
 
@@ -54,14 +54,8 @@ module.exports = {
 
     if (banner) embed.setImage(banner);
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('argus:botinfo:' + interaction.user.id)
-        .setLabel('More Info')
-        .setEmoji('🧩')
-        .setStyle(ButtonStyle.Secondary)
-    );
 
-    await interaction.reply({ embeds: [embed], components: [row], allowedMentions: { parse: [] } });
+
+    await interaction.reply({ embeds: [embed], allowedMentions: { parse: [] } });
   }
 };
