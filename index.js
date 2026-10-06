@@ -1,7 +1,7 @@
 // Main Discord bot entry point for OSINT Assistant — Benzyplug
 require('dotenv').config();
 
-const { Client, GatewayIntentBits, Events, MessageFlags, REST, Routes, ActivityType } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, Events, MessageFlags, REST, Routes, ActivityType } = require('discord.js');
 const path = require('node:path');
 const { checkPermission } = require('./utils/permissions');
 const { checkRateLimit, startRateLimitPrune, stopRateLimitPrune } = require('./utils/ratelimit');
@@ -145,12 +145,10 @@ const client = new Client({
     allowedMentions: { parse: ['users'], repliedUser: false }
 });
 
-const { commands, stats } = bootstrap.loadCommands(path.join(__dirname, 'commands'));
+const commands = new Collection();
+const stats = { loaded: 0, skipped: 0, failed: 0, failedFiles: [] };
 client.commands = commands;
-logger.info({ loaded: stats.loaded, skipped: stats.skipped, failed: stats.failed, failedFiles: stats.failedFiles }, 'Commands loaded');
-if (stats.failed > 0) {
-    logger.error({ failedFiles: stats.failedFiles }, 'One or more command files failed to load; command synchronization is blocked to prevent wiping registered commands.');
-}
+console.log('[ARGUS] Core modules loaded — connecting to Discord before loading commands');
 
 const shutdownHandler = bootstrap.createShutdownHandler(client, {
     onSignal: (signal) => { logger.info({ signal }, 'shutdown signal received'); markShuttingDown(); },
@@ -171,6 +169,17 @@ client.once(Events.ClientReady, async (readyClient) => {
     console.log(`[ARGUS] READY — guilds=${readyClient.guilds.cache.size} commands=${client.commands.size} application=${client.application?.id || 'unknown'}`);
     updatePresence();
     presenceTimer = setInterval(updatePresence, 3000);
+
+    console.log('[ARGUS] READY — loading command modules now...');
+    const loadedCommands = bootstrap.loadCommands(path.join(__dirname, 'commands'));
+    for (const [name, command] of loadedCommands.commands) client.commands.set(name, command);
+    Object.assign(stats, loadedCommands.stats);
+    console.log(`[ARGUS] COMMAND LOAD — loaded=${stats.loaded} failed=${stats.failed}`);
+    if (stats.failed > 0) console.error('[ARGUS] COMMAND LOAD FAILURES:', JSON.stringify(stats.failedFiles));
+    if (stats.failed === 0) {
+        await syncApplicationCommands();
+        console.log('[ARGUS] COMMAND SYNC COMPLETE');
+    }
     presenceTimer.unref?.();
     if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
     await syncApplicationCommands();
