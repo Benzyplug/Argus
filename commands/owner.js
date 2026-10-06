@@ -27,7 +27,7 @@ module.exports = {
         { name: '◈ Version', value: '`v' + pkg.version + '`', inline: true },
         { name: '◈ Development', value: 'Discord bots • OSINT • automation\nNode.js • JavaScript • APIs', inline: false }
       )
-      .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • Owner: Lmao_2.0' })
+      .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY @ẞ€ÑZ¥' })
       .setTimestamp();
 
     if (banner) embed.setImage(banner);
