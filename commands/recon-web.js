@@ -20,16 +20,23 @@
  */
 
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js');
-const axios = require('axios');
-const { validateUrlNotInternal, getSafeAxiosConfig } = require('../utils/ssrf');
-const { isValidDomain, sanitizeFilename } = require('../utils/validation');
-const { archiveReport } = require('../utils/reports');
-const cheerio = require('cheerio');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const { URL } = require('url');
-const mmh = require('murmurhash'); // Changed from mmh3 to mmh
+const lazy = {};
+function deps() {
+    if (!lazy.loaded) {
+        lazy.axios = require('axios');
+        lazy.ssrf = require('../utils/ssrf');
+        lazy.validation = require('../utils/validation');
+        lazy.archiveReport = require('../utils/reports').archiveReport;
+        lazy.cheerio = require('cheerio');
+        lazy.fs = require('fs');
+        lazy.path = require('path');
+        lazy.os = require('os');
+        lazy.URL = require('url').URL;
+        lazy.mmh = require('murmurhash');
+        lazy.loaded = true;
+    }
+    return lazy;
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -56,7 +63,10 @@ module.exports = {
         await interaction.deferReply({ ephemeral: false });
         
         try {
-            const domain = interaction.options.getString('domain');
+            const { axios, ssrf, validation, archiveReport, cheerio, fs, path, os, URL, mmh } = deps();
+        const { validateUrlNotInternal, getSafeAxiosConfig } = ssrf;
+        const { isValidDomain, sanitizeFilename } = validation;
+        const domain = interaction.options.getString('domain');
             const service = interaction.options.getString('service') || 'all';
             
             // Validate domain format
