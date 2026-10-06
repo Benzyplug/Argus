@@ -167,7 +167,14 @@ try {
 
 const shutdownHandler = bootstrap.createShutdownHandler(client, {
     onSignal: (signal) => { logger.info({ signal }, 'shutdown signal received'); markShuttingDown(); },
-    onDrain: async () => { if (presenceTimer) clearInterval(presenceTimer); stopRateLimitPrune(); stopHealthWriter(); stopHourlySweep(); stopReportsSweep(); if (metricsServer) await stopMetricsServer(); }
+    onDrain: async () => {
+        if (presenceTimer) clearInterval(presenceTimer);
+        stopRateLimitPrune();
+        stopHealthWriter();
+        stopHourlySweep();
+        stopReportsSweep();
+        if (metricsServer) await stopMetricsServer();
+    }
 });
 process.on('SIGINT', () => shutdownHandler('SIGINT'));
 process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
@@ -179,9 +186,17 @@ function leaveUnauthorized(guild) {
     }
 }
 
-client.once(Events.ClientReady, async (readyClient) => {
-    logger.info({ tag: readyClient.user.tag, guilds: readyClient.guilds.cache.size, commands: client.commands.size, applicationId: readyClient.application?.id || readyClient.client?.application?.id || null }, 'Argus online');
-    console.log(`[ARGUS] READY — guilds=${readyClient.guilds.cache.size} commands=${client.commands.size} application=${client.application?.id || 'unknown'}`);
+// Use the literal 'ready' event here for maximum compatibility across discord.js versions.
+client.once('ready', async (readyClient) => {
+    logger.info({
+        tag: readyClient.user.tag,
+        guilds: readyClient.guilds.cache.size,
+        commands: client.commands.size,
+        applicationId: readyClient.application?.id || readyClient.client?.application?.id || null
+    }, 'Argus online');
+
+    console.log(`[ARGUS] READY EVENT FIRED — guilds=${readyClient.guilds.cache.size} commands=${client.commands.size} application=${client.application?.id || 'unknown'}`);
+
     updatePresence();
     presenceTimer = setInterval(updatePresence, 3000);
 
@@ -200,7 +215,6 @@ client.once(Events.ClientReady, async (readyClient) => {
     discordEvents.inc({ event: 'ready' });
 });
 
-client.on(Events.GuildCreate, leaveUnauthorized);
 client.on('error', (err) => {
     logger.error({ err }, 'Discord client error');
     console.error('[ARGUS DISCORD ERROR]', err?.stack || err);
@@ -240,7 +254,10 @@ client.on(Events.InteractionCreate, async interaction => {
 
     const cmdName = interaction.commandName;
     const command = client.commands.get(cmdName);
-    if (!command) { logger.error({ commandName: cmdName }, 'No command matching name was found'); return; }
+    if (!command) {
+        logger.error({ commandName: cmdName }, 'No command matching name was found');
+        return;
+    }
 
     const { allowed, reason } = checkPermission(interaction);
     if (!allowed) {
@@ -276,7 +293,9 @@ client.on(Events.InteractionCreate, async interaction => {
         try {
             if (interaction.replied || interaction.deferred) await interaction.followUp({ content: msg, flags: MessageFlags.Ephemeral });
             else await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
-        } catch (e) { logger.error({ err: e }, 'Failed to send error message to user'); }
+        } catch (e) {
+            logger.error({ err: e }, 'Failed to send error message to user');
+        }
     } finally {
         endTimer();
     }
@@ -286,7 +305,12 @@ process.on('uncaughtException', (err) => { logger.fatal({ err }, 'uncaughtExcept
 process.on('unhandledRejection', (reason) => { logger.fatal({ reason }, 'unhandledRejection'); process.exit(1); });
 
 async function startArgus() {
-    logger.info({ guildId: process.env.GUILD_ID || null, clientId: process.env.CLIENT_ID || null, commandCount: client.commands.size }, 'Starting Argus...');
+    logger.info({
+        guildId: process.env.GUILD_ID || null,
+        clientId: process.env.CLIENT_ID || null,
+        commandCount: client.commands.size
+    }, 'Starting Argus...');
+
     console.log(`[ARGUS] STARTING — commands=${client.commands.size}; connecting to Discord...`);
 
     const LOGIN_TIMEOUT_MS = 45000;
