@@ -21,7 +21,7 @@ const GROUPS = {
   ai: { label: '🤖 AI & Utilities', emoji: '🤖', test: n => /ai|health|jwt|monitor|nuclei/i.test(n) }
 };
 
-const stamp = () => `⌬ ARGUS • v${pkg.version} • Owner: Lmao_2.0`;
+const stamp = () => `⌬ ARGUS • v${pkg.version} • BY @ẞ€ÑZ¥`;
 
 function groups(client) {
   const all = [...client.commands.values()].filter(c => c?.data?.name && !['commands', 'owner'].includes(c.data.name));
