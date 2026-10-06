@@ -110,6 +110,11 @@ function updatePresence() {
 }
 
 async function syncApplicationCommands() {
+    console.log(`[ARGUS] SYNC START — GUILD_ID=${process.env.GUILD_ID || 'MISSING'} CLIENT_ID=${process.env.CLIENT_ID || 'MISSING'} loaded=${client.commands.size}`);
+    if (process.env.GUILD_ID) {
+        const targetGuild = client.guilds.cache.get(process.env.GUILD_ID);
+        console.log(`[ARGUS] TARGET GUILD — found=${Boolean(targetGuild)} name=${targetGuild?.name || 'NOT FOUND'} id=${process.env.GUILD_ID}`);
+    }
     if (client.commands.size === 0) {
         logger.error({ loaded: client.commands.size, failed: stats.failed, failedFiles: stats.failedFiles }, 'No slash commands loaded; refusing to overwrite Discord commands.');
         return false;
@@ -123,11 +128,14 @@ async function syncApplicationCommands() {
 
     if (process.env.GUILD_ID) {
         try {
+            console.log(`[ARGUS] REGISTERING ${payload.length} COMMANDS to guild ${process.env.GUILD_ID} using application ${client.application?.id || 'UNKNOWN'}`);
             const deployed = await client.application.commands.set(payload, process.env.GUILD_ID);
+            console.log(`[ARGUS] REGISTER RESULT — ${deployed.size} commands returned by Discord`);
             const verified = await client.application.commands.fetch({
                 guildId: process.env.GUILD_ID,
                 cache: false
             });
+            console.log(`[ARGUS] VERIFYING guild commands...`);
             logger.info({
                 registered: deployed.size,
                 verified: verified.size,
