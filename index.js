@@ -110,47 +110,70 @@ function updatePresence() {
 }
 
 async function syncApplicationCommands() {
-    console.log(`[ARGUS] SYNC START — GUILD_ID=${process.env.GUILD_ID || 'MISSING'} CLIENT_ID=${process.env.CLIENT_ID || 'MISSING'} loaded=${client.commands.size}`);
-    if (process.env.GUILD_ID) {
-        const targetGuild = client.guilds.cache.get(process.env.GUILD_ID);
-        console.log(`[ARGUS] TARGET GUILD — found=${Boolean(targetGuild)} name=${targetGuild?.name || 'NOT FOUND'} id=${process.env.GUILD_ID}`);
+    const guildId = process.env.GUILD_ID;
+    const applicationId = process.env.CLIENT_ID || client.application?.id;
+
+    console.log(`[ARGUS] SYNC START — GUILD_ID=${guildId || 'MISSING'} CLIENT_ID=${applicationId || 'MISSING'} loaded=${client.commands.size}`);
+
+    if (!guildId) {
+        logger.error('GUILD_ID is not set; cannot register guild slash commands');
+        return false;
     }
+
+    if (!applicationId) {
+        logger.error('CLIENT_ID/application ID is not available; cannot register guild slash commands');
+        return false;
+    }
+
+    const targetGuild = client.guilds.cache.get(guildId);
+    console.log(`[ARGUS] TARGET GUILD — found=${Boolean(targetGuild)} name=${targetGuild?.name || 'NOT FOUND'} id=${guildId}`);
+
+    if (!targetGuild) {
+        logger.error({ guildId, guilds: [...client.guilds.cache.values()].map(guild => ({ id: guild.id, name: guild.name })) }, 'Target guild is not available to Argus');
+        return false;
+    }
+
     if (client.commands.size === 0) {
         logger.error({ loaded: client.commands.size, failed: stats.failed, failedFiles: stats.failedFiles }, 'No slash commands loaded; refusing to overwrite Discord commands.');
         return false;
     }
 
-    if (stats.failed > 0) {
-        logger.error({ loaded: client.commands.size, failed: stats.failed, failedFiles: stats.failedFiles }, 'Some command files failed to load; synchronizing the commands that loaded successfully so Argus does not lose its entire slash-command registry.');
-    }
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     const payload = [...client.commands.values()].map(command => command.data.toJSON());
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    const route = Routes.applicationGuildCommands(applicationId, guildId);
 
-    if (process.env.GUILD_ID) {
-        try {
-            console.log(`[ARGUS] REGISTERING ${payload.length} COMMANDS to guild ${process.env.GUILD_ID} using application ${client.application?.id || 'UNKNOWN'}`);
-            const deployed = await client.application.commands.set(payload, process.env.GUILD_ID);
-            console.log(`[ARGUS] REGISTER RESULT — ${deployed.size} commands returned by Discord`);
-            const verified = await client.application.commands.fetch({
-                guildId: process.env.GUILD_ID,
-                cache: false
-            });
-            console.log(`[ARGUS] VERIFYING guild commands...`);
-            logger.info({
-                registered: deployed.size,
-                verified: verified.size,
-                guildId: process.env.GUILD_ID,
-                applicationId: client.application?.id,
-                commands: [...verified.values()].map(command => command.name)
-            }, 'Guild slash commands synchronized and verified');
-        } catch (err) {
-            logger.error({ err, guildId: process.env.GUILD_ID, applicationId: client.application?.id, expectedCommands: payload.map(command => command.name) }, 'FAILED to synchronize guild slash commands');
-            console.error('[ARGUS] COMMAND SYNC FAILED:', err?.message || err);
-        }
-    } else {
-        logger.warn('GUILD_ID is not set; skipping automatic guild command synchronization');
+    try {
+        console.log(`[ARGUS] REGISTERING ${payload.length} COMMANDS to guild ${guildId} using application ${applicationId}`);
+
+        // Direct Discord API bulk overwrite. This avoids relying on the cached
+        // discord.js application-command manager and makes the target IDs explicit.
+        const deployed = await rest.put(route, { body: payload });
+
+        console.log(`[ARGUS] REGISTER RESULT — ${Array.isArray(deployed) ? deployed.length : 0} commands returned by Discord`);
+
+        const verified = await rest.get(route);
+        const verifiedNames = Array.isArray(verified) ? verified.map(command => command.name) : [];
+
+        logger.info({
+            registered: Array.isArray(deployed) ? deployed.length : 0,
+            verified: verifiedNames.length,
+            guildId,
+            applicationId,
+            commands: verifiedNames
+        }, 'Guild slash commands synchronized and verified');
+
+        console.log(`[ARGUS] VERIFY RESULT — ${verifiedNames.length} commands: ${verifiedNames.join(', ')}`);
+        return true;
+    } catch (err) {
+        logger.error({
+            err,
+            guildId,
+            applicationId,
+            expectedCommands: payload.map(command => command.name)
+        }, 'FAILED to synchronize guild slash commands');
+        console.error('[ARGUS] COMMAND SYNC FAILED:', err?.message || err);
+        return false;
     }
-
 }
 
 const client = new Client({
