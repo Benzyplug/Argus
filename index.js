@@ -13,13 +13,13 @@ const { startHourlySweep, stopHourlySweep } = require('./utils/temp-sweep');
 const { pruneReports, startReportsSweep, stopReportsSweep } = require('./utils/reports');
 const { stylePayload, loadingEmbed } = require('./utils/embedBuilder');
 
-require('./utils/config'); // validates env; exits(1) on missing required vars
+require('./utils/config');
 
 const tempDir = path.join(__dirname, 'temp');
 bootstrap.sweepBootTemp(tempDir);
 startHourlySweep(tempDir);
-pruneReports();        // boot prune of the durable reports/ archive (long TTL)
-startReportsSweep();   // hourly reports/ prune
+pruneReports();
+startReportsSweep();
 
 const HEALTH_FILE = process.env.HEALTH_FILE || './temp/.health/health.json';
 writeStartingState(HEALTH_FILE);
@@ -63,9 +63,7 @@ function installResponseStyling(interaction) {
     const commandName = interaction.commandName || 'argus';
 
     interaction.deferReply = async (options = {}) => {
-        const payload = {
-            embeds: [loadingEmbed(interaction, commandName)]
-        };
+        const payload = { embeds: [loadingEmbed(interaction, commandName)] };
         if (options.ephemeral !== undefined) payload.ephemeral = options.ephemeral;
         if (options.flags !== undefined) payload.flags = options.flags;
         return originalReply(payload);
@@ -94,7 +92,6 @@ function updatePresence() {
     if (!client.user) return;
     const message = PRESENCE_MESSAGES[presenceIndex++ % PRESENCE_MESSAGES.length];
     try {
-        // setPresence is synchronous in discord.js; do not call .catch() on it.
         client.user.setPresence({
             status: 'dnd',
             activities: [{
@@ -171,18 +168,26 @@ client.once(Events.ClientReady, async (readyClient) => {
     presenceTimer = setInterval(updatePresence, 3000);
 
     console.log('[ARGUS] READY — loading command modules now...');
-    const loadedCommands = bootstrap.loadCommands(path.join(__dirname, 'commands'));
-    for (const [name, command] of loadedCommands.commands) client.commands.set(name, command);
-    Object.assign(stats, loadedCommands.stats);
-    console.log(`[ARGUS] COMMAND LOAD — loaded=${stats.loaded} failed=${stats.failed}`);
-    if (stats.failed > 0) console.error('[ARGUS] COMMAND LOAD FAILURES:', JSON.stringify(stats.failedFiles));
-    if (stats.failed === 0) {
+    try {
+        const loadedCommands = bootstrap.loadCommands(path.join(__dirname, 'commands'));
+        for (const [name, command] of loadedCommands.commands) client.commands.set(name, command);
+        Object.assign(stats, loadedCommands.stats);
+        console.log(`[ARGUS] COMMAND LOAD — loaded=${stats.loaded} failed=${stats.failed}`);
+
+        if (stats.failed > 0) {
+            console.error('[ARGUS] COMMAND LOAD FAILURES:', JSON.stringify(stats.failedFiles));
+            return;
+        }
+
         await syncApplicationCommands();
         console.log('[ARGUS] COMMAND SYNC COMPLETE');
+    } catch (err) {
+        logger.error({ err }, 'Command loading/sync failed after Discord login');
+        console.error('[ARGUS] COMMAND STARTUP FAILED:', err?.stack || err);
     }
+
     presenceTimer.unref?.();
     if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
-    await syncApplicationCommands();
     markReady();
     discordEvents.inc({ event: 'ready' });
 });
@@ -211,20 +216,15 @@ client.on(Events.InteractionCreate, async interaction => {
 
     const { allowed, reason } = checkPermission(interaction);
     if (!allowed) {
-        try {
-            return await interaction.reply({ content: reason, flags: MessageFlags.Ephemeral });
-        } catch {
-            return;
-        }
+        try { return await interaction.reply({ content: reason, flags: MessageFlags.Ephemeral }); }
+        catch { return; }
     }
+
     const { limited, reason: rateLimitReason } = checkRateLimit(interaction.user.id, cmdName);
     if (limited) {
         ratelimitBlocks.inc({ command: cmdName });
-        try {
-            return await interaction.reply({ content: rateLimitReason, flags: MessageFlags.Ephemeral });
-        } catch {
-            return;
-        }
+        try { return await interaction.reply({ content: rateLimitReason, flags: MessageFlags.Ephemeral }); }
+        catch { return; }
     }
 
     installResponseStyling(interaction);
@@ -259,15 +259,7 @@ process.on('unhandledRejection', (reason) => { logger.fatal({ reason }, 'unhandl
 
 async function startArgus() {
     logger.info({ guildId: process.env.GUILD_ID || null, clientId: process.env.CLIENT_ID || null, commandCount: client.commands.size }, 'Starting Argus...');
-    console.log(`[ARGUS] STARTING — ${client.commands.size} commands loaded`);
-
-    if (stats.failed > 0) {
-        throw new Error(`Cannot start: ${stats.failed} command file(s) failed to load.`);
-    }
-
-    await syncApplicationCommands();
-    console.log('[ARGUS] COMMAND SYNC COMPLETE — connecting to Discord...');
-
+    console.log('[ARGUS] STARTING — connecting to Discord...');
     await client.login(process.env.DISCORD_TOKEN);
     console.log('[ARGUS] DISCORD LOGIN COMPLETE');
 }
