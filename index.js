@@ -145,7 +145,25 @@ const client = new Client({
 const commands = new Collection();
 const stats = { loaded: 0, skipped: 0, failed: 0, failedFiles: [] };
 client.commands = commands;
-console.log('[ARGUS] Core modules loaded — connecting to Discord before loading commands');
+
+console.log('[ARGUS] Core modules loaded — loading command modules before Discord login...');
+try {
+    const loadedCommands = bootstrap.loadCommands(path.join(__dirname, 'commands'));
+    for (const [name, command] of loadedCommands.commands) client.commands.set(name, command);
+    Object.assign(stats, loadedCommands.stats);
+    console.log(`[ARGUS] COMMAND LOAD — loaded=${stats.loaded} skipped=${stats.skipped} failed=${stats.failed}`);
+
+    if (stats.failed > 0) {
+        console.error('[ARGUS] COMMAND LOAD FAILURES:', JSON.stringify(stats.failedFiles));
+        throw new Error(`Command loading failed for ${stats.failed} file(s)`);
+    }
+
+    console.log('[ARGUS] COMMAND MODULES READY — connecting to Discord...');
+} catch (err) {
+    logger.fatal({ err }, 'Command loading failed during startup');
+    console.error('[ARGUS] COMMAND STARTUP FAILED:', err?.stack || err);
+    process.exit(1);
+}
 
 const shutdownHandler = bootstrap.createShutdownHandler(client, {
     onSignal: (signal) => { logger.info({ signal }, 'shutdown signal received'); markShuttingDown(); },
@@ -167,23 +185,13 @@ client.once(Events.ClientReady, async (readyClient) => {
     updatePresence();
     presenceTimer = setInterval(updatePresence, 3000);
 
-    console.log('[ARGUS] READY — loading command modules now...');
+    console.log(`[ARGUS] READY — commands loaded=${client.commands.size}; syncing application commands...`);
     try {
-        const loadedCommands = bootstrap.loadCommands(path.join(__dirname, 'commands'));
-        for (const [name, command] of loadedCommands.commands) client.commands.set(name, command);
-        Object.assign(stats, loadedCommands.stats);
-        console.log(`[ARGUS] COMMAND LOAD — loaded=${stats.loaded} failed=${stats.failed}`);
-
-        if (stats.failed > 0) {
-            console.error('[ARGUS] COMMAND LOAD FAILURES:', JSON.stringify(stats.failedFiles));
-            return;
-        }
-
         await syncApplicationCommands();
         console.log('[ARGUS] COMMAND SYNC COMPLETE');
     } catch (err) {
-        logger.error({ err }, 'Command loading/sync failed after Discord login');
-        console.error('[ARGUS] COMMAND STARTUP FAILED:', err?.stack || err);
+        logger.error({ err }, 'Command sync failed after Discord login');
+        console.error('[ARGUS] COMMAND SYNC FAILED:', err?.stack || err);
     }
 
     presenceTimer.unref?.();
@@ -195,6 +203,26 @@ client.once(Events.ClientReady, async (readyClient) => {
 client.on(Events.GuildCreate, leaveUnauthorized);
 client.on('error', (err) => {
     logger.error({ err }, 'Discord client error');
+    console.error('[ARGUS DISCORD ERROR]', err?.stack || err);
+});
+
+client.on('warn', (message) => {
+    console.warn('[ARGUS DISCORD WARN]', message);
+});
+
+client.on('debug', (message) => {
+    if (/gateway|identify|resume|heartbeat|ready|session/i.test(message)) {
+        console.log('[ARGUS DISCORD DEBUG]', message);
+    }
+});
+
+client.on('shardError', (error) => {
+    logger.error({ err: error }, 'Discord gateway shard error');
+    console.error('[ARGUS SHARD ERROR]', error?.stack || error);
+});
+
+client.on('shardDisconnect', (event, shardId) => {
+    console.error(`[ARGUS SHARD DISCONNECT] shard=${shardId} code=${event?.code ?? 'unknown'}`);
 });
 
 client.on(Events.InteractionCreate, async interaction => {
@@ -259,9 +287,25 @@ process.on('unhandledRejection', (reason) => { logger.fatal({ reason }, 'unhandl
 
 async function startArgus() {
     logger.info({ guildId: process.env.GUILD_ID || null, clientId: process.env.CLIENT_ID || null, commandCount: client.commands.size }, 'Starting Argus...');
-    console.log('[ARGUS] STARTING — connecting to Discord...');
-    await client.login(process.env.DISCORD_TOKEN);
-    console.log('[ARGUS] DISCORD LOGIN COMPLETE');
+    console.log(`[ARGUS] STARTING — commands=${client.commands.size}; connecting to Discord...`);
+
+    const LOGIN_TIMEOUT_MS = 45000;
+    let timeoutHandle;
+
+    try {
+        await Promise.race([
+            client.login(process.env.DISCORD_TOKEN),
+            new Promise((_, reject) => {
+                timeoutHandle = setTimeout(() => {
+                    reject(new Error(`Discord login timed out after ${LOGIN_TIMEOUT_MS / 1000}s`));
+                }, LOGIN_TIMEOUT_MS);
+            })
+        ]);
+
+        console.log('[ARGUS] DISCORD LOGIN COMPLETE');
+    } finally {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
 }
 
 startArgus().catch((err) => {
