@@ -71,20 +71,17 @@ function installResponseStyling(interaction) {
 
     interaction.reply = async (options = {}) => {
         if (typeof options === 'string') return originalReply(options);
-        const payload = stylePayload(options, { interaction, client, commandName });
-        return originalReply(payload);
+        return originalReply(stylePayload(options, { interaction, client, commandName }));
     };
 
     interaction.editReply = async (options = {}) => {
         if (typeof options === 'string') return originalEditReply(options);
-        const payload = stylePayload(options, { interaction, client, commandName });
-        return originalEditReply(payload);
+        return originalEditReply(stylePayload(options, { interaction, client, commandName }));
     };
 
     interaction.followUp = async (options = {}) => {
         if (typeof options === 'string') return originalFollowUp(options);
-        const payload = stylePayload(options, { interaction, client, commandName });
-        return originalFollowUp(payload);
+        return originalFollowUp(stylePayload(options, { interaction, client, commandName }));
     };
 }
 
@@ -186,7 +183,6 @@ function leaveUnauthorized(guild) {
     }
 }
 
-// Use the literal 'ready' event here for maximum compatibility across discord.js versions.
 client.once('ready', async (readyClient) => {
     logger.info({
         tag: readyClient.user.tag,
@@ -213,6 +209,13 @@ client.once('ready', async (readyClient) => {
     if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
     markReady();
     discordEvents.inc({ event: 'ready' });
+});
+
+client.on('raw', (packet) => {
+    const type = packet?.t || packet?.op;
+    if (type === 'READY' || type === 'RESUMED' || type === 0 || type === 1) {
+        console.log('[ARGUS GATEWAY RAW]', typeof type === 'string' ? type : `OP_${type}`);
+    }
 });
 
 client.on('error', (err) => {
@@ -273,14 +276,6 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 
     installResponseStyling(interaction);
-
-    logger.info({
-        command: cmdName,
-        userId: interaction.user.id,
-        userTag: interaction.user.tag,
-        guildId: interaction.guild?.id,
-        guildName: interaction.guild?.name
-    }, 'Command invoked');
 
     const endTimer = commandDuration.startTimer({ command: cmdName });
     try {
