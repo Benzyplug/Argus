@@ -111,69 +111,33 @@ function updatePresence() {
 
 async function syncApplicationCommands() {
     const guildId = process.env.GUILD_ID;
-    const applicationId = process.env.CLIENT_ID || client.application?.id;
+    const applicationId = process.env.CLIENT_ID;
 
-    console.log(`[ARGUS] SYNC START — GUILD_ID=${guildId || 'MISSING'} CLIENT_ID=${applicationId || 'MISSING'} loaded=${client.commands.size}`);
+    console.log(`[ARGUS] COMMAND SYNC START — GUILD_ID=${guildId || 'MISSING'} CLIENT_ID=${applicationId || 'MISSING'} loaded=${client.commands.size}`);
 
-    if (!guildId) {
-        logger.error('GUILD_ID is not set; cannot register guild slash commands');
-        return false;
-    }
-
-    if (!applicationId) {
-        logger.error('CLIENT_ID/application ID is not available; cannot register guild slash commands');
-        return false;
-    }
-
-    const targetGuild = client.guilds.cache.get(guildId);
-    console.log(`[ARGUS] TARGET GUILD — found=${Boolean(targetGuild)} name=${targetGuild?.name || 'NOT FOUND'} id=${guildId}`);
-
-    if (!targetGuild) {
-        logger.error({ guildId, guilds: [...client.guilds.cache.values()].map(guild => ({ id: guild.id, name: guild.name })) }, 'Target guild is not available to Argus');
-        return false;
-    }
-
-    if (client.commands.size === 0) {
-        logger.error({ loaded: client.commands.size, failed: stats.failed, failedFiles: stats.failedFiles }, 'No slash commands loaded; refusing to overwrite Discord commands.');
-        return false;
-    }
+    if (!guildId) throw new Error('GUILD_ID is missing from the environment');
+    if (!applicationId) throw new Error('CLIENT_ID is missing from the environment');
+    if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN is missing from the environment');
+    if (client.commands.size === 0) throw new Error('No slash commands were loaded');
 
     const payload = [...client.commands.values()].map(command => command.data.toJSON());
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     const route = Routes.applicationGuildCommands(applicationId, guildId);
 
-    try {
-        console.log(`[ARGUS] REGISTERING ${payload.length} COMMANDS to guild ${guildId} using application ${applicationId}`);
+    console.log(`[ARGUS] REGISTERING ${payload.length} COMMANDS...`);
+    const deployed = await rest.put(route, { body: payload });
+    const deployedNames = Array.isArray(deployed) ? deployed.map(command => command.name) : [];
 
-        // Direct Discord API bulk overwrite. This avoids relying on the cached
-        // discord.js application-command manager and makes the target IDs explicit.
-        const deployed = await rest.put(route, { body: payload });
+    console.log(`[ARGUS] COMMAND REGISTERED — ${deployedNames.length}`);
+    console.log(`[ARGUS] COMMAND NAMES — ${deployedNames.join(', ')}`);
 
-        console.log(`[ARGUS] REGISTER RESULT — ${Array.isArray(deployed) ? deployed.length : 0} commands returned by Discord`);
+    const verified = await rest.get(route);
+    const verifiedNames = Array.isArray(verified) ? verified.map(command => command.name) : [];
 
-        const verified = await rest.get(route);
-        const verifiedNames = Array.isArray(verified) ? verified.map(command => command.name) : [];
+    console.log(`[ARGUS] COMMAND VERIFY — ${verifiedNames.length}`);
+    console.log(`[ARGUS] VERIFIED NAMES — ${verifiedNames.join(', ')}`);
 
-        logger.info({
-            registered: Array.isArray(deployed) ? deployed.length : 0,
-            verified: verifiedNames.length,
-            guildId,
-            applicationId,
-            commands: verifiedNames
-        }, 'Guild slash commands synchronized and verified');
-
-        console.log(`[ARGUS] VERIFY RESULT — ${verifiedNames.length} commands: ${verifiedNames.join(', ')}`);
-        return true;
-    } catch (err) {
-        logger.error({
-            err,
-            guildId,
-            applicationId,
-            expectedCommands: payload.map(command => command.name)
-        }, 'FAILED to synchronize guild slash commands');
-        console.error('[ARGUS] COMMAND SYNC FAILED:', err?.message || err);
-        return false;
-    }
+    return true;
 }
 
 const client = new Client({
@@ -284,11 +248,23 @@ client.on(Events.InteractionCreate, async interaction => {
 process.on('uncaughtException', (err) => { logger.fatal({ err }, 'uncaughtException'); process.exit(1); });
 process.on('unhandledRejection', (reason) => { logger.fatal({ reason }, 'unhandledRejection'); process.exit(1); });
 
-logger.info({ guildId: process.env.GUILD_ID || null, clientId: process.env.CLIENT_ID || null, commandCount: client.commands.size }, 'Starting Argus...');
-console.log(`[ARGUS] Starting Argus — ${client.commands.size} commands loaded`);
-client.login(process.env.DISCORD_TOKEN).then(() => {
-    console.log(`[ARGUS] Discord login promise resolved — application=${client.application?.id || 'pending'}`);
-}).catch((err) => {
-    logger.fatal({ err }, 'Discord login failed');
+async function startArgus() {
+    logger.info({ guildId: process.env.GUILD_ID || null, clientId: process.env.CLIENT_ID || null, commandCount: client.commands.size }, 'Starting Argus...');
+    console.log(`[ARGUS] STARTING — ${client.commands.size} commands loaded`);
+
+    if (stats.failed > 0) {
+        throw new Error(`Cannot start: ${stats.failed} command file(s) failed to load.`);
+    }
+
+    await syncApplicationCommands();
+    console.log('[ARGUS] COMMAND SYNC COMPLETE — connecting to Discord...');
+
+    await client.login(process.env.DISCORD_TOKEN);
+    console.log('[ARGUS] DISCORD LOGIN COMPLETE');
+}
+
+startArgus().catch((err) => {
+    logger.fatal({ err }, 'Argus startup failed');
+    console.error('[ARGUS] STARTUP FAILED:', err?.stack || err);
     process.exit(1);
 });
