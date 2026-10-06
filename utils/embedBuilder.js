@@ -119,7 +119,7 @@ function styleEmbed(input, context = {}) {
   embed.setFields(fields.slice(0, 25));
   const verifiedNames = /^(airport|flight|flight-number|dns|host-lookup|whois|blockchain|crypto-detect|vehicle|vessel|company-search|web-recon)$/i;
   const verified = (context.verified || verifiedNames.test(commandName)) ? ' • ✓ Verified source' : '';
-  embed.setFooter({ text: 'Powered by ' + botName + ' • OSINT Toolkit' + verified + ' • v' + pkg.version + ' • Owner: Lmao_2.0' });
+  embed.setFooter({ text: ''⌬ ARGUS • v' + pkg.version + ' • BY @ẞ€ÑZ¥' });
   return embed;
 }
 
