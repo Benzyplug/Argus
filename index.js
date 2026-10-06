@@ -111,31 +111,76 @@ function updatePresence() {
 async function syncApplicationCommands(payload, label = 'loaded') {
     const guildId = process.env.GUILD_ID;
     const applicationId = process.env.CLIENT_ID;
+    const token = process.env.DISCORD_TOKEN;
 
     console.log(`[ARGUS] COMMAND SYNC START — GUILD_ID=${guildId || 'MISSING'} CLIENT_ID=${applicationId || 'MISSING'} source=${label} count=${payload.length}`);
 
     if (!guildId) throw new Error('GUILD_ID is missing from the environment');
     if (!applicationId) throw new Error('CLIENT_ID is missing from the environment');
-    if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN is missing from the environment');
+    if (!token) throw new Error('DISCORD_TOKEN is missing from the environment');
     if (!payload.length) throw new Error('No slash commands were prepared');
 
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-    const route = Routes.applicationGuildCommands(applicationId, guildId);
+    const endpoint = `https://discord.com/api/v10/applications/${applicationId}/guilds/${guildId}/commands`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
-    console.log(`[ARGUS] REGISTERING ${payload.length} COMMANDS...`);
-    const deployed = await rest.put(route, { body: payload });
-    const deployedNames = Array.isArray(deployed) ? deployed.map(command => command.name) : [];
+    try {
+        console.log('[ARGUS] DISCORD REST PUT START...');
+        const response = await fetch(endpoint, {
+            method: 'PUT',
+            headers: {
+                Authorization: `Bot ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+        });
 
-    console.log(`[ARGUS] COMMAND REGISTERED — ${deployedNames.length}`);
-    console.log(`[ARGUS] COMMAND NAMES — ${deployedNames.join(', ')}`);
+        const text = await response.text();
+        let body;
+        try { body = JSON.parse(text); } catch { body = text; }
 
-    const verified = await rest.get(route);
-    const verifiedNames = Array.isArray(verified) ? verified.map(command => command.name) : [];
+        if (!response.ok) {
+            throw new Error(`Discord REST ${response.status} ${response.statusText}: ${typeof body === 'string' ? body : JSON.stringify(body)}`);
+        }
 
-    console.log(`[ARGUS] COMMAND VERIFY — ${verifiedNames.length}`);
-    console.log(`[ARGUS] VERIFIED NAMES — ${verifiedNames.join(', ')}`);
+        const deployedNames = Array.isArray(body) ? body.map(command => command.name) : [];
+        console.log(`[ARGUS] COMMAND REGISTERED — ${deployedNames.length}`);
+        console.log(`[ARGUS] COMMAND NAMES — ${deployedNames.join(', ')}`);
 
-    return true;
+        console.log('[ARGUS] DISCORD REST VERIFY START...');
+        const verifyController = new AbortController();
+        const verifyTimeout = setTimeout(() => verifyController.abort(), 10000);
+        try {
+            const verifiedResponse = await fetch(endpoint, {
+                method: 'GET',
+                headers: { Authorization: `Bot ${token}` },
+                signal: verifyController.signal
+            });
+            const verifiedText = await verifiedResponse.text();
+            let verifiedBody;
+            try { verifiedBody = JSON.parse(verifiedText); } catch { verifiedBody = verifiedText; }
+
+            if (!verifiedResponse.ok) {
+                throw new Error(`Discord REST verify ${verifiedResponse.status} ${verifiedResponse.statusText}: ${typeof verifiedBody === 'string' ? verifiedBody : JSON.stringify(verifiedBody)}`);
+            }
+
+            const verifiedNames = Array.isArray(verifiedBody) ? verifiedBody.map(command => command.name) : [];
+            console.log(`[ARGUS] COMMAND VERIFY — ${verifiedNames.length}`);
+            console.log(`[ARGUS] VERIFIED NAMES — ${verifiedNames.join(', ')}`);
+        } finally {
+            clearTimeout(verifyTimeout);
+        }
+
+        return true;
+    } catch (err) {
+        if (err?.name === 'AbortError') {
+            throw new Error('Discord REST command registration timed out after 15 seconds');
+        }
+        throw err;
+    } finally {
+        clearTimeout(timeout);
+    }
 }
 
 function metadataCommandPayload() {
@@ -368,14 +413,10 @@ async function startArgus() {
         // Discord command registration does not require a READY event.
         // This is intentionally independent from gateway startup so a
         // gateway READY delay cannot hide the slash-command menu.
-        console.log('[ARGUS] PRE-GATEWAY COMMAND REGISTRATION START...');
-        await syncApplicationCommands(metadataCommandPayload(), 'pre-gateway-metadata');
-        console.log('[ARGUS] PRE-GATEWAY COMMAND REGISTRATION COMPLETE — slash commands are visible');
+        console.log('[ARGUS] STARTING GATEWAY AND REST REGISTRATION INDEPENDENTLY...');
 
-        // Gateway connection is started after the REST registration.
-        // Do not await login here: Discord.js resolves login only after the
-        // gateway READY lifecycle completes, and that must not block command
-        // registration or the worker from continuing to run.
+        // Start the gateway immediately. REST registration has its own timeout
+        // and cannot prevent the bot from connecting.
         void client.login(process.env.DISCORD_TOKEN).then(async () => {
             console.log('[ARGUS] LOGIN RESOLVED — gateway session established');
             await completeArgusStartup('loginResolved');
@@ -385,6 +426,13 @@ async function startArgus() {
             console.error('[ARGUS] LOGIN FAILED:', err?.stack || err);
             logger.fatal({ err }, 'Argus gateway login failed');
         });
+
+        void syncApplicationCommands(metadataCommandPayload(), 'pre-gateway-metadata')
+            .then(() => console.log('[ARGUS] PRE-GATEWAY COMMAND REGISTRATION COMPLETE — slash commands are visible'))
+            .catch((err) => {
+                console.error('[ARGUS] PRE-GATEWAY COMMAND REGISTRATION FAILED:', err?.stack || err);
+                logger.error({ err }, 'Pre-gateway command registration failed');
+            });
     } catch (err) {
         console.error('[ARGUS] LOGIN/COMMAND STARTUP FAILED:', err?.stack || err);
         throw err;
