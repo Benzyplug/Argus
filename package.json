@@ -53,7 +53,7 @@
     "axios": "^1.20.0",
     "cheerio": "^1.2.0",
     "discord-api-types": "^0.38.55",
-    "discord.js": "^14.26.4",
+    "discord.js": "14.27.0",
     "dotenv": "^17.4.2",
     "murmurhash": "^2.0.1",
     "pino": "^10.3.1",
