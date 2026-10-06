@@ -28,7 +28,10 @@ startRateLimitPrune();
 
 let metricsServer = null;
 if (process.env.METRICS_ENABLED === 'true') {
-    metricsServer = startMetricsServer({ port: parseInt(process.env.METRICS_PORT || '9090', 10), host: process.env.METRICS_HOST || '127.0.0.1' });
+    metricsServer = startMetricsServer({
+        port: parseInt(process.env.METRICS_PORT || '9090', 10),
+        host: process.env.METRICS_HOST || '127.0.0.1'
+    });
     metricsServer.catch(err => logger.error({ err }, 'metrics server failed to start'));
 }
 
@@ -87,7 +90,9 @@ function installResponseStyling(interaction) {
 
 function updatePresence() {
     if (!client.user) return;
+
     const message = PRESENCE_MESSAGES[presenceIndex++ % PRESENCE_MESSAGES.length];
+
     try {
         client.user.setPresence({
             status: 'dnd',
@@ -139,12 +144,7 @@ const client = new Client({
     allowedMentions: { parse: ['users'], repliedUser: false }
 });
 
-// Discord gateway sessions are healthy in production, but the high-level
-// ClientReady dispatch is not reaching this process. For a single-guild bot,
-// perform registration immediately after login succeeds instead of depending
-// on the ready event.
 let startupReadyHandled = false;
-let commandSyncPromise = null;
 
 async function completeArgusStartup(source) {
     if (startupReadyHandled) return;
@@ -152,7 +152,6 @@ async function completeArgusStartup(source) {
 
     console.log(`[ARGUS] STARTUP HANDLER — source=${source}`);
 
-    // Give discord.js a moment to finish populating the client after login.
     await new Promise(resolve => setTimeout(resolve, 500));
 
     updatePresence();
@@ -176,10 +175,16 @@ const stats = { loaded: 0, skipped: 0, failed: 0, failedFiles: [] };
 client.commands = commands;
 
 console.log('[ARGUS] Core modules loaded — loading command modules before Discord login...');
+
 try {
     const loadedCommands = bootstrap.loadCommands(path.join(__dirname, 'commands'));
-    for (const [name, command] of loadedCommands.commands) client.commands.set(name, command);
+
+    for (const [name, command] of loadedCommands.commands) {
+        client.commands.set(name, command);
+    }
+
     Object.assign(stats, loadedCommands.stats);
+
     console.log(`[ARGUS] COMMAND LOAD — loaded=${stats.loaded} skipped=${stats.skipped} failed=${stats.failed}`);
 
     if (stats.failed > 0) {
@@ -195,7 +200,10 @@ try {
 }
 
 const shutdownHandler = bootstrap.createShutdownHandler(client, {
-    onSignal: (signal) => { logger.info({ signal }, 'shutdown signal received'); markShuttingDown(); },
+    onSignal: (signal) => {
+        logger.info({ signal }, 'shutdown signal received');
+        markShuttingDown();
+    },
     onDrain: async () => {
         if (presenceTimer) clearInterval(presenceTimer);
         stopRateLimitPrune();
@@ -205,6 +213,7 @@ const shutdownHandler = bootstrap.createShutdownHandler(client, {
         if (metricsServer) await stopMetricsServer();
     }
 });
+
 process.on('SIGINT', () => shutdownHandler('SIGINT'));
 process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
 
@@ -215,56 +224,8 @@ function leaveUnauthorized(guild) {
     }
 }
 
-let startupReadyHandled = false;
-
-async function handleArgusReady(source = 'clientReady') {
-    if (startupReadyHandled) return;
-    startupReadyHandled = true;
-
-    const readyClient = client;
-    const finishStartup = async () => {
-        logger.info({
-            tag: readyClient.user?.tag || 'unknown',
-            guilds: readyClient.guilds.cache.size,
-            commands: client.commands.size,
-            applicationId: readyClient.application?.id || null,
-            source
-        }, 'Argus online');
-
-        console.log(`[ARGUS] READY — source=${source} guilds=${readyClient.guilds.cache.size} commands=${client.commands.size} application=${client.application?.id || 'unknown'}`);
-
-        updatePresence();
-        presenceTimer = setInterval(updatePresence, 3000);
-
-        console.log(`[ARGUS] READY — commands loaded=${client.commands.size}; syncing application commands...`);
-        try {
-            await syncApplicationCommands();
-            console.log('[ARGUS] COMMAND SYNC COMPLETE');
-        } catch (err) {
-            logger.error({ err }, 'Command sync failed after Discord login');
-            console.error('[ARGUS] COMMAND SYNC FAILED:', err?.stack || err);
-        }
-
-        presenceTimer.unref?.();
-        if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
-        markReady();
-        discordEvents.inc({ event: 'ready' });
-    };
-
-    // The gateway READY packet can arrive before discord.js finishes its
-    // ClientReady bookkeeping. Give discord.js one tick to populate user/application.
-    if (!readyClient.user) {
-        await new Promise(resolve => setTimeout(resolve, 250));
-    }
-
-    await finishStartup();
-}
-
 client.once(Events.ClientReady, () => completeArgusStartup('clientReady'));
 
-// Fallback: discord.js exposes raw Gateway dispatch events through WebSocketManager.
-// DeployHatch is receiving and acknowledging heartbeats, so use the actual READY
-// dispatch to unblock command registration if the high-level ClientReady event stalls.
 client.ws.once('READY', () => {
     console.log('[ARGUS] GATEWAY READY DISPATCH RECEIVED');
     setTimeout(() => completeArgusStartup('gatewayReady'), 250);
@@ -305,8 +266,12 @@ client.on(Events.InteractionCreate, async interaction => {
     if (ALLOWED_GUILDS.length > 0) {
         if (!interaction.guild || !ALLOWED_GUILDS.includes(interaction.guild.id)) {
             if (interaction.isRepliable?.()) {
-                try { await interaction.reply({ content: 'This bot is not authorized in this context.', flags: MessageFlags.Ephemeral }); }
-                catch { /* expired */ }
+                try {
+                    await interaction.reply({
+                        content: 'This bot is not authorized in this context.',
+                        flags: MessageFlags.Ephemeral
+                    });
+                } catch {}
             }
             return;
         }
@@ -316,6 +281,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
     const cmdName = interaction.commandName;
     const command = client.commands.get(cmdName);
+
     if (!command) {
         logger.error({ commandName: cmdName }, 'No command matching name was found');
         return;
@@ -323,30 +289,43 @@ client.on(Events.InteractionCreate, async interaction => {
 
     const { allowed, reason } = checkPermission(interaction);
     if (!allowed) {
-        try { return await interaction.reply({ content: reason, flags: MessageFlags.Ephemeral }); }
-        catch { return; }
+        try {
+            return await interaction.reply({ content: reason, flags: MessageFlags.Ephemeral });
+        } catch {
+            return;
+        }
     }
 
     const { limited, reason: rateLimitReason } = checkRateLimit(interaction.user.id, cmdName);
+
     if (limited) {
         ratelimitBlocks.inc({ command: cmdName });
-        try { return await interaction.reply({ content: rateLimitReason, flags: MessageFlags.Ephemeral }); }
-        catch { return; }
+        try {
+            return await interaction.reply({ content: rateLimitReason, flags: MessageFlags.Ephemeral });
+        } catch {
+            return;
+        }
     }
 
     installResponseStyling(interaction);
 
     const endTimer = commandDuration.startTimer({ command: cmdName });
+
     try {
         await command.execute(interaction);
         logger.info({ command: cmdName }, 'Command completed successfully');
     } catch (error) {
         commandErrors.inc({ command: cmdName, reason: error.name || 'Error' });
         logger.error({ command: cmdName, err: error }, 'Error executing command');
+
         const msg = 'There was an error while executing this command! Please try again later.';
+
         try {
-            if (interaction.replied || interaction.deferred) await interaction.followUp({ content: msg, flags: MessageFlags.Ephemeral });
-            else await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: msg, flags: MessageFlags.Ephemeral });
+            } else {
+                await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
+            }
         } catch (e) {
             logger.error({ err: e }, 'Failed to send error message to user');
         }
@@ -355,8 +334,15 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-process.on('uncaughtException', (err) => { logger.fatal({ err }, 'uncaughtException'); process.exit(1); });
-process.on('unhandledRejection', (reason) => { logger.fatal({ reason }, 'unhandledRejection'); process.exit(1); });
+process.on('uncaughtException', (err) => {
+    logger.fatal({ err }, 'uncaughtException');
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+    logger.fatal({ reason }, 'unhandledRejection');
+    process.exit(1);
+});
 
 async function startArgus() {
     logger.info({
@@ -367,20 +353,16 @@ async function startArgus() {
 
     console.log(`[ARGUS] STARTING — commands=${client.commands.size}; connecting to Discord...`);
 
-    const LOGIN_TIMEOUT_MS = 45000;
-    let timeoutHandle;
-
     try {
         await client.login(process.env.DISCORD_TOKEN);
         console.log('[ARGUS] DISCORD LOGIN COMPLETE');
-        // If the gateway connected but discord.js did not emit READY, login()
-        // still resolves once the token/session is accepted. Register commands
-        // here so startup cannot stall on an event dispatch.
+
         if (!startupReadyHandled) {
             await completeArgusStartup('loginResolved');
         }
-    } finally {
-        if (timeoutHandle) clearTimeout(timeoutHandle);
+    } catch (err) {
+        console.error('[ARGUS] LOGIN FAILED:', err?.stack || err);
+        throw err;
     }
 }
 
