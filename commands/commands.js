@@ -105,29 +105,18 @@ function commandOptions(command) {
   return { subcommands, leaves };
 }
 
-function modal(command, uid) {
+function modal(command, uid, subcommandName = null) {
   const { subcommands, leaves } = commandOptions(command);
   const tool = command.data.name;
+  const selectedSubcommand = subcommands.find(s => s.name === subcommandName);
+  const modalOptions = selectedSubcommand?.options || leaves;
   const modal = new ModalBuilder()
-    .setCustomId(`argus:modal:${uid}:${tool}`)
+    .setCustomId(`argus:modal:${uid}:${tool}:${subcommandName || ''}`)
     .setTitle((`ARGUS • /${tool}`).slice(0, 45));
 
   const inputs = [];
 
-  if (subcommands.length) {
-    const names = subcommands.map(s => s.name).join(', ');
-    inputs.push(
-      new TextInputBuilder()
-        .setCustomId('argus_subcommand')
-        .setLabel('Subcommand')
-        .setPlaceholder(names.slice(0, 100))
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true)
-        .setMaxLength(100)
-    );
-  }
-
-  for (const option of leaves.slice(0, 5 - inputs.length)) {
+  for (const option of modalOptions.slice(0, 5)) {
     const typeLabel = option.type === 5 ? 'true or false' : 'value';
     const input = new TextInputBuilder()
       .setCustomId('argus_opt_' + option.name)
@@ -161,35 +150,10 @@ function modal(command, uid) {
   return modal;
 }
 
-function findOption(interaction, name) {
-  const walk = list => {
-    for (const option of list || []) {
-      if (option.name === name) return option;
-      const nested = walk(option.options);
-      if (nested !== undefined) return nested;
-    }
-    return undefined;
-  };
-  return findOptionFromModal(interaction, name) ?? walk(interaction.__argusModalOptions || []);
-}
-
-function findOptionFromModal(interaction, name) {
-  try {
-    const value = interaction.fields.getTextInputValue('argus_opt_' + name);
-    return value === '' ? undefined : value;
-  } catch {
-    return undefined;
-  }
-}
-
-function createModalOptions(interaction, command) {
-  const { subcommands } = commandOptions(command);
-  const activeSubcommand = (() => {
-    try { return interaction.fields.getTextInputValue('argus_subcommand').trim(); } catch { return null; }
-  })();
-
+function createModalOptions(interaction, command, activeSubcommand = null) {
+  const { subcommands, leaves } = commandOptions(command);
   const selected = subcommands.find(s => s.name === activeSubcommand);
-  const selectedOptions = selected?.options || [];
+  const selectedOptions = selected?.options || leaves;
 
   const allLeaves = [];
   const walk = list => {
@@ -198,7 +162,7 @@ function createModalOptions(interaction, command) {
       else allLeaves.push(option);
     }
   };
-  walk(selected ? selectedOptions : commandOptions(command).leaves);
+  walk(selectedOptions);
 
   const values = new Map();
   for (const option of allLeaves) {
@@ -240,8 +204,8 @@ function createModalOptions(interaction, command) {
   };
 }
 
-function createExecutionInteraction(interaction, command) {
-  const options = createModalOptions(interaction, command);
+function createExecutionInteraction(interaction, command, activeSubcommand = null) {
+  const options = createModalOptions(interaction, command, activeSubcommand);
   const originalReply = interaction.reply.bind(interaction);
   const originalEditReply = interaction.editReply.bind(interaction);
   const originalFollowUp = interaction.followUp.bind(interaction);
@@ -309,7 +273,49 @@ async function handleInteraction(interaction) {
       await interaction.reply({ content: '❌ That Argus operation is unavailable.', ephemeral: true });
       return true;
     }
+
+    const { subcommands } = commandOptions(command);
+
+    if (subcommands.length) {
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId(`argus:subcommand:${uid}:${command.data.name}`)
+        .setPlaceholder('Select an operation mode')
+        .addOptions(subcommands.slice(0, 25).map(sub =>
+          new StringSelectMenuOptionBuilder()
+            .setLabel(sub.name.slice(0, 100))
+            .setDescription(String(sub.description || 'Select this operation mode').slice(0, 100))
+            .setValue(sub.name)
+        ));
+
+      await interaction.update({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0x5865f2)
+            .setTitle(`⌬ ARGUS • /${command.data.name}`)
+            .setDescription('Select the operation mode, then ARGUS will open the input modal.')
+            .setFooter({ text: stamp() })
+            .setTimestamp()
+        ],
+        components: [new ActionRowBuilder().addComponents(menu)]
+      });
+      return true;
+    }
+
     await interaction.showModal(modal(command, uid));
+    return true;
+  }
+
+  if (interaction.isStringSelectMenu() && parts[1] === 'subcommand') {
+    const tool = parts[3];
+    const command = interaction.client.commands.get(tool);
+    const subcommand = interaction.values[0];
+
+    if (!command) {
+      await interaction.reply({ content: '❌ That Argus operation is unavailable.', ephemeral: true });
+      return true;
+    }
+
+    await interaction.showModal(modal(command, uid, subcommand));
     return true;
   }
 
@@ -323,6 +329,7 @@ async function handleInteraction(interaction) {
 
   if (interaction.isModalSubmit() && parts[1] === 'modal') {
     const tool = parts[3];
+    const activeSubcommand = parts[4] || null;
     const command = interaction.client.commands.get(tool);
 
     if (!command || tool === 'commands' || tool === 'owner') {
@@ -330,7 +337,7 @@ async function handleInteraction(interaction) {
       return true;
     }
 
-    const executionInteraction = createExecutionInteraction(interaction, command);
+    const executionInteraction = createExecutionInteraction(interaction, command, activeSubcommand);
 
     try {
       await command.execute(executionInteraction);
