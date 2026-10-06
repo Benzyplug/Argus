@@ -365,8 +365,16 @@ async function startArgus() {
 
     try {
         await client.login(process.env.DISCORD_TOKEN);
+        console.log('[ARGUS] LOGIN RESOLVED — registering slash commands directly...');
+
+        // Do not depend on a Discord.js event for registration. The login
+        // promise resolving proves the gateway session is established.
+        await completeArgusStartup('loginResolved');
+        await initializeCommandsAfterGateway();
+
+        console.log('[ARGUS] STARTUP COMPLETE — bot online and slash commands registered');
     } catch (err) {
-        console.error('[ARGUS] LOGIN FAILED:', err?.stack || err);
+        console.error('[ARGUS] LOGIN/COMMAND STARTUP FAILED:', err?.stack || err);
         throw err;
     }
 }
