@@ -1,34 +1,10 @@
 /**
  * File: airport.js
- * Description: Comprehensive airport information and intelligence gathering
+ * Description: Comprehensive airport information and intelligence
  * Author: ẞ€ÑZ¥
- *
- * This command provides detailed airport intelligence including:
- * - Airport operational data and statistics
- * - Runway and facility information
- * - Location and geographical data
- * - Contact information and services
- * - Real-time operational status
- *
- * Features:
- * - Multi-format airport code support (ICAO, IATA)
- * - Comprehensive facility analysis
- * - Operational capacity assessment
- * - Geographic coordinate mapping
- * - Historical operational data
- *
- * Data Sources:
- * - AirportDB.io for detailed airport information
- * - TravelPayouts API for basic airport data
- * - Multiple aviation databases for comprehensive coverage
- *
- * Usage: /airport icao:EGLL
- *        /airport iata:LHR
  */
 
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
-const axios = require('axios');
-const { getSafeAxiosConfig } = require('../utils/ssrf');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -42,33 +18,45 @@ module.exports = {
             option.setName('iata')
                 .setDescription('The IATA code of the airport (JFK)')
                 .setRequired(false)),
+
     async execute(interaction) {
+        // Load network dependencies only when the command is actually used.
+        const axios = require('axios');
+        const { getSafeAxiosConfig } = require('../utils/ssrf');
+
         await interaction.deferReply();
 
         const icao = interaction.options.getString('icao');
         const iata = interaction.options.getString('iata');
 
-        // Validate input: require either ICAO or IATA, but not both
         if ((!icao && !iata) || (icao && iata)) {
-            await interaction.editReply({ content: 'Please provide either an ICAO code or an IATA code, but not both.', flags: MessageFlags.Ephemeral });
+            await interaction.editReply({
+                content: 'Please provide either an ICAO code or an IATA code, but not both.',
+                flags: MessageFlags.Ephemeral
+            });
             return;
         }
 
         try {
             if (icao) {
-                await handleICAOSearch(interaction, icao);
+                await handleICAOSearch(interaction, icao, axios, getSafeAxiosConfig);
             } else {
-                await handleIATASearch(interaction, iata);
+                await handleIATASearch(interaction, iata, axios, getSafeAxiosConfig);
             }
         } catch (error) {
-            console.error('Error fetching airport data:', { message: error.message, status: error.response?.status });
+            console.error('Error fetching airport data:', {
+                message: error.message,
+                status: error.response?.status
+            });
             const codeType = icao ? 'ICAO' : 'IATA';
-            await interaction.editReply(`Error fetching airport data. Please check the ${codeType} code and try again.`);
+            await interaction.editReply(
+                `Error fetching airport data. Please check the ${codeType} code and try again.`
+            );
         }
-    },
+    }
 };
 
-async function handleICAOSearch(interaction, icao) {
+async function handleICAOSearch(interaction, icao, axios, getSafeAxiosConfig) {
     const apiToken = process.env.AIRPORTDB_API_KEY;
     if (!apiToken) {
         await interaction.editReply('Error: API token not found. Please check the .env file.');
@@ -82,23 +70,19 @@ async function handleICAOSearch(interaction, icao) {
         maxBodyLength: 5 * 1024 * 1024,
         ...getSafeAxiosConfig()
     });
-    const airport = response.data;
 
-    const embed = createEmbed(airport);
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [createEmbed(response.data)] });
 }
 
-async function handleIATASearch(interaction, iata) {
-    // Fetch airports data from TravelPayouts API
+async function handleIATASearch(interaction, iata, axios, getSafeAxiosConfig) {
     const response = await axios.get('https://api.travelpayouts.com/data/en/airports.json', {
         timeout: 15000,
         maxContentLength: 10 * 1024 * 1024,
         maxBodyLength: 10 * 1024 * 1024,
         ...getSafeAxiosConfig()
     });
-    const airports = response.data;
 
-    // Find the airport with matching IATA code
+    const airports = response.data;
     const airport = airports.find(a => a.code === iata);
 
     if (!airport) {
@@ -106,7 +90,6 @@ async function handleIATASearch(interaction, iata) {
         return;
     }
 
-    // Create a simplified embed with available data
     const embed = {
         color: 0x0099ff,
         title: `${airport.name} (${airport.code})`,
@@ -116,18 +99,16 @@ async function handleIATASearch(interaction, iata) {
             { name: 'Country', value: airport.country_code || 'N/A', inline: true },
             { name: 'Time Zone', value: airport.time_zone || 'N/A', inline: true },
             { name: 'Coordinates', value: `${airport.coordinates.lat}, ${airport.coordinates.lon}`, inline: true },
-            { name: 'Flightable', value: airport.flightable ? 'Yes' : 'No', inline: true },
+            { name: 'Flightable', value: airport.flightable ? 'Yes' : 'No', inline: true }
         ],
-        footer: { text: 'Data provided by TravelPayouts API' },
+        footer: { text: 'Data provided by TravelPayouts API' }
     };
 
     await interaction.editReply({ embeds: [embed] });
 
-    // Try to get additional data from AirportDB if possible
     try {
         const apiToken = process.env.AIRPORTDB_API_KEY;
         if (apiToken) {
-            // Try to find this airport in AirportDB using the IATA code
             const detailedResponse = await axios.get(`https://airportdb.io/api/v1/airport/iata/${iata}`, {
                 params: { apiToken },
                 timeout: 15000,
@@ -137,13 +118,13 @@ async function handleIATASearch(interaction, iata) {
             });
 
             if (detailedResponse.data) {
-                const detailedAirport = detailedResponse.data;
-                const detailedEmbed = createEmbed(detailedAirport);
-                await interaction.followUp({ content: 'Additional details found:', embeds: [detailedEmbed] });
+                await interaction.followUp({
+                    content: 'Additional details found:',
+                    embeds: [createEmbed(detailedResponse.data)]
+                });
             }
         }
     } catch (error) {
-        // Silently ignore any errors here as we already provided basic data
         console.log(`Could not fetch additional data for IATA ${iata}: ${error.message}`);
     }
 }
@@ -160,8 +141,8 @@ function createEmbed(airport) {
             { name: 'Location', value: `${airport.municipality || 'N/A'}, ${airport.iso_country || 'N/A'}`, inline: true },
             { name: 'Coordinates', value: `${airport.latitude_deg || airport.lat}, ${airport.longitude_deg || airport.lon}`, inline: true },
             { name: 'Elevation', value: airport.elevation_ft ? `${airport.elevation_ft} ft` : 'N/A', inline: true },
-            { name: 'Runways', value: airport.runways ? airport.runways.length.toString() : 'N/A', inline: true },
+            { name: 'Runways', value: airport.runways ? airport.runways.length.toString() : 'N/A', inline: true }
         ],
-        footer: { text: 'Data provided by AirportDB.io' },
+        footer: { text: 'Data provided by AirportDB.io' }
     };
 }
