@@ -212,8 +212,8 @@ module.exports = {
         if (!id.startsWith('argus:ai-modal:')) return false;
 
         const parts = id.split(':');
-        const userId = parts[1];
-        const mode = parts[2];
+        const userId = parts[2];
+        const mode = parts[3];
 
         if (interaction.user.id !== userId) {
             await interaction.reply({ content: '❌ This input form belongs to another user.', flags: MessageFlags.Ephemeral });
