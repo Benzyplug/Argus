@@ -7,7 +7,8 @@ const logger = require('./logger');
 
 const REQUIRED = {
     DISCORD_TOKEN: 'Discord bot token',
-    CLIENT_ID: 'Discord application client ID'
+    CLIENT_ID: 'Discord application client ID',
+    GUILD_ID: 'Discord guild/server ID'
 };
 
 const OPTIONAL = {
@@ -56,6 +57,7 @@ function loadConfig() {
     }
 
     if (missing.length > 0) {
+        console.error('[ARGUS CONFIG] Missing required environment variables:', missing.join(', '));
         logger.error({ missing }, 'Missing required environment variables');
         process.exit(1);
     }
