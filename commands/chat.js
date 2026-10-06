@@ -27,11 +27,12 @@
  *        /ai message:"Generate Python script for data parsing" type:code
  */
 
-const { SlashCommandBuilder, AttachmentBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, AttachmentBuilder, MessageFlags, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const axios = require('axios');
 const { getSafeAxiosConfig } = require('../utils/ssrf');
 const { sanitizeChatInput } = require('../utils/validation');
 const { neutralizeMentions } = require('../utils/discord');
+const { stylePayload } = require('../utils/embedBuilder');
 
 const QWEN3_ASR_LANGUAGE_CODES = new Set([
     'zh', 'yue', 'en', 'ja', 'de', 'ko', 'ru', 'fr', 'pt', 'ar', 'it', 'es',
@@ -63,148 +64,86 @@ function pruneConversations() {
 const pruneInterval = setInterval(pruneConversations, 5 * 60 * 1000);
 pruneInterval.unref();
 
+function buildAiModal(mode, userId) {
+    const definitions = {
+        ask: [
+            ['prompt', 'Prompt', 'Ask a question or describe what you need…', TextInputStyle.Paragraph, true],
+            ['model', 'Model', 'qwen3-vl-flash', TextInputStyle.Short, false],
+            ['context', 'Context', 'general / osint / data / investigation / technical / report', TextInputStyle.Short, false]
+        ],
+        code: [
+            ['request', 'Code request', 'Describe the code or automation you need…', TextInputStyle.Paragraph, true],
+            ['language', 'Language', 'python / javascript / bash / powershell / sql', TextInputStyle.Short, false],
+            ['model', 'Model', 'qwen3-coder-plus', TextInputStyle.Short, false],
+            ['new-context', 'Fresh context', 'true or false', TextInputStyle.Short, false]
+        ],
+        analyze: [
+            ['data', 'Data', 'Paste the findings or data to analyze…', TextInputStyle.Paragraph, true],
+            ['analysis-type', 'Analysis type', 'summary / pattern / threat / link / timeline / risk', TextInputStyle.Short, false]
+        ],
+        transcribe: [
+            ['audio-url', 'Audio asset', '1min.ai asset path / URL…', TextInputStyle.Short, true],
+            ['stt-model', 'Speech model', 'qwen3-asr-flash / phone_call', TextInputStyle.Short, false],
+            ['language', 'Language', 'en, en-US, etc. Leave blank for auto-detection.', TextInputStyle.Short, false],
+            ['enable-itn', 'Inverse text normalization', 'true or false', TextInputStyle.Short, false]
+        ]
+    };
+
+    const modal = new ModalBuilder()
+        .setCustomId('argus:ai-modal:' + userId + ':' + mode)
+        .setTitle(('AI • ' + mode).slice(0, 45));
+
+    const inputs = (definitions[mode] || []).map(([name, label, placeholder, style, required]) =>
+        new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+                .setCustomId('ai_' + name)
+                .setLabel(label)
+                .setPlaceholder(placeholder)
+                .setStyle(style)
+                .setRequired(required)
+                .setMaxLength(4000)
+        )
+    );
+
+    modal.addComponents(inputs);
+    return modal;
+}
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('ai')
-        .setDescription('AI-powered assistant for OSINT analysis and research support')
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('ask')
-                .setDescription('Ask the AI assistant a question or request analysis')
-                .addStringOption(option =>
-                    option.setName('message')
-                        .setDescription('Your question or request for the AI')
-                        .setRequired(true)
-                        .setMaxLength(2000))
-                .addStringOption(option =>
-                    option.setName('model')
-                        .setDescription('AI model to use (default: Qwen3 VL Flash)')
-                        .setRequired(false)
-                        .addChoices(
-                            { name: 'Qwen3 VL Flash', value: 'qwen3-vl-flash' },
-                            { name: 'GPT-5.4 Mini', value: 'gpt-5.4-mini' },
-                            { name: 'Sonar Reasoning Pro', value: 'sonar-reasoning-pro' },
-                            { name: 'Grok 4 Fast Reasoning', value: 'grok-4-fast-reasoning' }
-                        ))
-                .addStringOption(option =>
-                    option.setName('context')
-                        .setDescription('Specialized context for the request')
-                        .setRequired(false)
-                        .addChoices(
-                            { name: 'OSINT Analysis', value: 'osint' },
-                            { name: 'Data Interpretation', value: 'data' },
-                            { name: 'Investigation Planning', value: 'investigation' },
-                            { name: 'Technical Analysis', value: 'technical' },
-                            { name: 'Report Writing', value: 'report' },
-                            { name: 'General Assistance', value: 'general' }
-                        )))
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('code')
-                .setDescription('Generate code for OSINT automation and data analysis')
-                .addStringOption(option =>
-                    option.setName('request')
-                        .setDescription('Describe the code you need')
-                        .setRequired(true)
-                        .setMaxLength(2000))
-                .addStringOption(option =>
-                    option.setName('language')
-                        .setDescription('Programming language (default: Python)')
-                        .setRequired(false)
-                        .addChoices(
-                            { name: 'Python', value: 'python' },
-                            { name: 'JavaScript', value: 'javascript' },
-                            { name: 'Bash/Shell', value: 'bash' },
-                            { name: 'PowerShell', value: 'powershell' },
-                            { name: 'SQL', value: 'sql' },
-                            { name: 'Other/Specify', value: 'other' }
-                        ))
-                .addStringOption(option =>
-                    option.setName('model')
-                        .setDescription('Code model to use (default: Qwen3 Coder Plus)')
-                        .setRequired(false)
-                        .addChoices(
-                            { name: 'Qwen3 Coder Plus', value: 'qwen3-coder-plus' },
-                            { name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-                            { name: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
-                            { name: 'GPT-5.4', value: 'gpt-5.4' },
-                            { name: 'Grok Code Fast 1', value: 'grok-code-fast-1' }
-                        ))
-                .addBooleanOption(option =>
-                    option.setName('new-context')
-                        .setDescription('Start fresh code generation context (default: false)')
-                        .setRequired(false)))
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('analyze')
-                .setDescription('Analyze OSINT data, findings, or investigation results')
-                .addStringOption(option =>
-                    option.setName('data')
-                        .setDescription('Data or findings to analyze')
-                        .setRequired(true)
-                        .setMaxLength(2000))
-                .addStringOption(option =>
-                    option.setName('analysis-type')
-                        .setDescription('Type of analysis needed')
-                        .setRequired(false)
-                        .addChoices(
-                            { name: 'Pattern Recognition', value: 'pattern' },
-                            { name: 'Threat Assessment', value: 'threat' },
-                            { name: 'Link Analysis', value: 'link' },
-                            { name: 'Timeline Analysis', value: 'timeline' },
-                            { name: 'Risk Assessment', value: 'risk' },
-                            { name: 'Summary Generation', value: 'summary' }
-                        )))
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('transcribe')
-                .setDescription('Transcribe uploaded audio (Qwen3 ASR Flash or Phone Call model)')
-                .addStringOption(option =>
-                    option.setName('audio-url')
-                        .setDescription('Asset path from 1min.ai Asset API upload (fileContent.path)')
-                        .setRequired(true)
-                        .setMaxLength(512))
-                .addStringOption(option =>
-                    option.setName('stt-model')
-                        .setDescription('Speech-to-text model to use (default: qwen3-asr-flash)')
-                        .setRequired(false)
-                        .addChoices(
-                            { name: 'Qwen3 ASR Flash', value: 'qwen3-asr-flash' },
-                            { name: 'Phone Call', value: 'phone_call' }
-                        ))
-                .addStringOption(option =>
-                    option.setName('language')
-                        .setDescription('Language code. Required for Phone Call (e.g. en-US), optional for Qwen3 (e.g. en)')
-                        .setRequired(false)
-                        .setMaxLength(10))
-                .addBooleanOption(option =>
-                    option.setName('enable-itn')
-                        .setDescription('Qwen3 only: enable inverse text normalization (English/Chinese)')
-                        .setRequired(false)))
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('reset')
-                .setDescription('Reset conversation context with AI models')
-                .addStringOption(option =>
-                    option.setName('model')
-                        .setDescription('Specific model to reset (default: all)')
-                        .setRequired(false)
-                        .addChoices(
-                            { name: 'All Models', value: 'all' },
-                            { name: 'Chat Context', value: 'chat' },
-                            { name: 'Code Context', value: 'code' },
-                            { name: 'Analysis Context', value: 'analysis' }
-                        ))),
+        .setDescription('AI analysis, research, coding and transcription')
+        .addStringOption(option =>
+            option.setName('mode')
+                .setDescription('Choose what you want Argus AI to do')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'Ask', value: 'ask' },
+                    { name: 'Code', value: 'code' },
+                    { name: 'Analyze', value: 'analyze' },
+                    { name: 'Transcribe', value: 'transcribe' },
+                    { name: 'Reset Context', value: 'reset' }
+                )),
 
     /**
      * Execute the AI chat command
      * @param {CommandInteraction} interaction - Discord interaction object
      */
     async execute(interaction) {
-        await interaction.deferReply();
-
-        const subcommand = interaction.options.getSubcommand();
+        const isModal = interaction.isModalSubmit?.();
+        const subcommand = isModal
+            ? String(interaction.customId || '').split(':')[2]
+            : interaction.options.getString('mode');
         const userId = interaction.user.id;
+
+        // The slash command chooses the operation. The actual input is collected
+        // in a native Discord modal so the command menu stays clean.
+        if (!isModal && subcommand !== 'reset') {
+            await interaction.showModal(buildAiModal(subcommand, userId));
+            return;
+        }
+
+        await interaction.deferReply();
 
         // Initialize user conversations if not exists
         if (!userConversations.has(userId)) {
@@ -266,6 +205,55 @@ module.exports = {
             console.error('Chat error:', { status: error.response?.status, message: error.message });
             await handleChatError(interaction, error, subcommand);
         }
+    },
+
+    async handleInteraction(interaction) {
+        const id = interaction.customId || '';
+        if (!id.startsWith('argus:ai-modal:')) return false;
+
+        const parts = id.split(':');
+        const userId = parts[1];
+        const mode = parts[2];
+
+        if (interaction.user.id !== userId) {
+            await interaction.reply({ content: '❌ This input form belongs to another user.', flags: MessageFlags.Ephemeral });
+            return true;
+        }
+
+        const values = new Map();
+        const fields = ['prompt', 'model', 'context', 'request', 'language', 'new-context', 'data', 'analysis-type', 'audio-url', 'stt-model', 'enable-itn'];
+        for (const name of fields) {
+            try {
+                const value = interaction.fields.getTextInputValue('ai_' + name);
+                if (value !== '') values.set(name, value);
+            } catch {}
+        }
+
+        const options = {
+            getSubcommand: () => mode,
+            getString: name => values.get(name) ?? null,
+            getBoolean: name => {
+                const value = values.get(name);
+                return value === undefined ? null : /^(true|1|yes|y|on)$/i.test(value);
+            }
+        };
+
+        const originalReply = interaction.reply.bind(interaction);
+        const originalEditReply = interaction.editReply.bind(interaction);
+        const originalFollowUp = interaction.followUp.bind(interaction);
+        const execution = new Proxy(interaction, {
+            get(target, property, receiver) {
+                if (property === 'commandName') return 'ai';
+                if (property === 'options') return options;
+                if (property === 'reply') return payload => originalReply(stylePayload(payload, { interaction, client: interaction.client, commandName: 'ai' }));
+                if (property === 'editReply') return payload => originalEditReply(stylePayload(payload, { interaction, client: interaction.client, commandName: 'ai' }));
+                if (property === 'followUp') return payload => originalFollowUp(stylePayload(payload, { interaction, client: interaction.client, commandName: 'ai' }));
+                return Reflect.get(target, property, receiver);
+            }
+        });
+
+        await module.exports.execute(execution);
+        return true;
     },
 
     shutdown() { clearInterval(pruneInterval); }
