@@ -49,7 +49,7 @@ module.exports = {
           inline: true
         }
       )
-      .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY @ẞ€ÑZ¥' })
+      .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0' })
       .setTimestamp();
 
     if (banner) embed.setImage(banner);
