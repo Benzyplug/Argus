@@ -132,7 +132,7 @@ module.exports = {
     async execute(interaction) {
         const isModal = interaction.isModalSubmit?.();
         const subcommand = isModal
-            ? String(interaction.customId || '').split(':')[2]
+            ? String(interaction.customId || '').split(':')[3]
             : interaction.options.getString('mode');
         const userId = interaction.user.id;
 
