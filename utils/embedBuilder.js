@@ -8,6 +8,15 @@ const COLORS = Object.freeze({
 });
 const ERROR_COLOR = COLORS.error;
 
+function getArgusBanner(client) {
+  try {
+    const bot = client?.user;
+    return bot?.bannerURL?.({ extension: 'png', size: 2048 }) ||
+      client?.application?.coverURL?.({ extension: 'png', size: 1024 }) ||
+      process.env.EMBED_BANNER_URL || null;
+  } catch { return process.env.EMBED_BANNER_URL || null; }
+}
+
 function categoryFor(commandName = '') {
   const n = commandName.toLowerCase();
   if (/dns|host|link|web|redirect|favicon|extract/.test(n)) return 'network';
@@ -96,7 +105,7 @@ function styleEmbed(input, context = {}) {
     if (targetIcon) embed.setThumbnail(targetIcon);
     else if (botIcon) embed.setThumbnail(botIcon);
   }
-  const banner = context.banner || process.env.EMBED_BANNER_URL || context.client?.application?.coverURL?.({ extension: 'png', size: 1024 });
+  const banner = context.banner || getArgusBanner(context.client);
   if (banner && !json.image?.url) { const url = safeUrl(banner); if (url) embed.setImage(url); }
   const title = json.title || '';
   const isError = /(^|\s)(❌|error|failed|failure)/i.test(title);
@@ -144,4 +153,4 @@ function loadingEmbed(interaction, toolName) {
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
 }
 
-module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget };
+module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner };
