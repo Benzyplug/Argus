@@ -53,7 +53,7 @@ module.exports = {
       .setTitle('〢 Quick Reference')
       .setDescription(
         '**Open-source intelligence, reconnaissance & analysis.**\n\n' +
-        'Use **`/commands`** for the interactive dashboard with category dropdowns, operation selectors and real input modals.'
+        'Use the command options directly from Discord. Commands that need more detail open focused native input forms.'
       );
 
     for (const section of sections) {
