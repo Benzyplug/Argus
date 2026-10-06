@@ -1,53 +1,80 @@
-/**
- * File: help.js
- * Description: Lists all registered slash commands with descriptions
- * Author: ẞ€ÑZ¥
- */
-
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { RESTRICTED_COMMANDS } = require('../utils/permissions');
-const { DESCRIPTION_LIMIT } = require('../utils/embed');
+const pkg = require('../package.json');
+const OWNER_ID = '1317480616048070656';
+const OWNER_MENTION = `<@${OWNER_ID}>`;
+
+const GROUPS = [
+  { title: '🌐 Web Intelligence', test: n => /dns|host|web|link|redirect|favicon|whois/i.test(n) },
+  { title: '🕵️ OSINT & Identity', test: n => /user|google|company|search|maigret|sherlock|dork|nike/i.test(n) },
+  { title: '🛰️ Transport', test: n => /flight|airport|vessel|vehicle/i.test(n) },
+  { title: '🧬 Files & Data', test: n => /exif|meta|upload|blockchain|crypto|doc/i.test(n) },
+  { title: '🤖 AI & Utilities', test: n => /ai|health|jwt|monitor|nuclei/i.test(n) }
+];
 
 module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('help')
-        .setDescription('List all available Argus commands'),
+  data: new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('Open the Argus help and command guide'),
 
-    async execute(interaction) {
-        const commands = [...interaction.client.commands.values()]
-            .map(cmd => ({
-                name: cmd.data.name,
-                description: cmd.data.description ?? '',
-                restricted: Object.prototype.hasOwnProperty.call(RESTRICTED_COMMANDS, cmd.data.name)
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name));
+  async execute(interaction) {
+    const commands = [...interaction.client.commands.values()]
+      .map(cmd => ({
+        name: cmd.data.name,
+        description: cmd.data.description || 'Argus operation',
+        restricted: Object.prototype.hasOwnProperty.call(RESTRICTED_COMMANDS, cmd.data.name)
+      }))
+      .filter(c => !['help', 'commands', 'owner'].includes(c.name))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-        const lines = commands.map(c => `${c.restricted ? '🔒 ' : ''}\`/${c.name}\` — ${c.description}`);
+    const sections = GROUPS.map(group => {
+      const items = commands.filter(c => group.test(c.name));
+      if (!items.length) return null;
+      return {
+        name: group.title,
+        value: items.map(c => `${c.restricted ? '🔒 ' : ''}**/${c.name}** — ${c.description}`).join('\n')
+      };
+    }).filter(Boolean);
 
-        const embeds = [];
-        let buffer = '';
-        for (const line of lines) {
-            const next = buffer ? `${buffer}\n${line}` : line;
-            if (next.length > DESCRIPTION_LIMIT) {
-                embeds.push(buffer);
-                buffer = line;
-            } else {
-                buffer = next;
-            }
-        }
-        if (buffer) embeds.push(buffer);
-
-        const built = embeds.map((desc, i) => {
-            const embed = new EmbedBuilder()
-                .setColor(0x5865f2)
-                .setDescription(desc);
-            if (i === 0) {
-                embed.setTitle(`Available Commands (${commands.length})`);
-                embed.setFooter({ text: '🔒 = requires elevated permission' });
-            }
-            return embed;
-        });
-
-        await interaction.reply({ embeds: built, ephemeral: true });
+    const assigned = new Set(sections.flatMap(section =>
+      commands.filter(c => section.value.includes('/' + c.name)).map(c => c.name)
+    ));
+    const other = commands.filter(c => !assigned.has(c.name));
+    if (other.length) {
+      sections.push({
+        name: '⌬ Other Operations',
+        value: other.map(c => `${c.restricted ? '🔒 ' : ''}**/${c.name}** — ${c.description}`).join('\n')
+      });
     }
+
+    const embeds = [];
+    let current = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle('⌬ ARGUS • HELP')
+      .setDescription(
+        '**Open-source intelligence, reconnaissance & analysis.**\n\n' +
+        'Use **`/commands`** for the interactive dashboard with category dropdowns, operation selectors and real input modals.'
+      );
+
+    for (const section of sections) {
+      if ((current.data.fields?.length || 0) >= 6) {
+        embeds.push(current.setFooter({ text: `⌬ ARGUS • v${pkg.version} • BY Lmao_2.0` }).setTimestamp());
+        current = new EmbedBuilder().setColor(0x5865f2);
+      }
+      current.addFields({ name: section.name, value: section.value.slice(0, 1024), inline: false });
+    }
+
+    current.addFields({
+      name: '◈ Need help?',
+      value: `For questions, setup help or issues, contact ${OWNER_MENTION}. You can open the profile and message them directly.`
+    });
+    current.setFooter({ text: `⌬ ARGUS • v${pkg.version} • BY Lmao_2.0` }).setTimestamp();
+    embeds.push(current);
+
+    await interaction.reply({
+      embeds,
+      allowedMentions: { parse: [] },
+      ephemeral: true
+    });
+  }
 };
