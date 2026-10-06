@@ -164,6 +164,7 @@ function createShutdownHandler(client, hooks = {}) {
 }
 
 module.exports = {
+    COMMAND_METADATA,
     loadCommands,
     parseAllowedGuilds,
     sweepBootTemp,
