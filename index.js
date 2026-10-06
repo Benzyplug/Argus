@@ -123,15 +123,18 @@ async function syncApplicationCommands() {
 
     if (process.env.GUILD_ID) {
         try {
-            const deployed = await rest.put(
-                Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-                { body: payload }
-            );
-            logger.info({
-                registered: deployed.length,
+            const deployed = await client.application.commands.set(payload, process.env.GUILD_ID);
+            const verified = await client.application.commands.fetch({
                 guildId: process.env.GUILD_ID,
-                commands: deployed.map(command => command.name)
-            }, 'Guild slash commands synchronized');
+                cache: false
+            });
+            logger.info({
+                registered: deployed.size,
+                verified: verified.size,
+                guildId: process.env.GUILD_ID,
+                applicationId: client.application?.id,
+                commands: [...verified.values()].map(command => command.name)
+            }, 'Guild slash commands synchronized and verified');
         } catch (err) {
             logger.error({ err }, 'Failed to synchronize guild slash commands');
         }
@@ -170,7 +173,7 @@ function leaveUnauthorized(guild) {
 client.once(Events.ClientReady, async (readyClient) => {
     logger.info({ tag: readyClient.user.tag, guilds: readyClient.guilds.cache.size, commands: client.commands.size }, 'Argus online');
     updatePresence();
-    presenceTimer = setInterval(updatePresence, 5000);
+    presenceTimer = setInterval(updatePresence, 3000);
     presenceTimer.unref?.();
     if (ALLOWED_GUILDS.length > 0) readyClient.guilds.cache.forEach(leaveUnauthorized);
     await syncApplicationCommands();
