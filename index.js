@@ -146,18 +146,14 @@ const client = new Client({
 });
 
 let startupReadyHandled = false;
+let commandInitializationStarted = false;
 
 async function completeArgusStartup(source) {
     if (startupReadyHandled) return;
     startupReadyHandled = true;
-
-    console.log(`[ARGUS] STARTUP HANDLER — source=${source}`);
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
+    console.log(`[ARGUS] GATEWAY READY — source=${source}`);
     updatePresence();
     presenceTimer = setInterval(updatePresence, 3000);
-
     presenceTimer.unref?.();
     markReady();
     discordEvents.inc({ event: 'ready' });
@@ -167,30 +163,33 @@ const commands = new Collection();
 const stats = { loaded: 0, skipped: 0, failed: 0, failedFiles: [] };
 client.commands = commands;
 
-console.log('[ARGUS] Core modules loaded — loading command modules before Discord login...');
+async function initializeCommandsAfterGateway() {
+    if (commandInitializationStarted) return;
+    commandInitializationStarted = true;
+    console.log('[ARGUS] Gateway is online — loading command modules now...');
 
-try {
-    const loadedCommands = bootstrap.loadCommands(path.join(__dirname, 'commands'));
+    try {
+        const loadedCommands = bootstrap.loadCommands(path.join(__dirname, 'commands'));
+        for (const [name, command] of loadedCommands.commands) {
+            client.commands.set(name, command);
+        }
+        Object.assign(stats, loadedCommands.stats);
+        console.log(`[ARGUS] COMMAND LOAD — loaded=${stats.loaded} skipped=${stats.skipped} failed=${stats.failed}`);
 
-    for (const [name, command] of loadedCommands.commands) {
-        client.commands.set(name, command);
+        if (stats.failed > 0) {
+            console.error('[ARGUS] COMMAND LOAD FAILURES:', JSON.stringify(stats.failedFiles));
+            throw new Error(`Command loading failed for ${stats.failed} file(s)`);
+        }
+
+        await syncApplicationCommands();
+        console.log('[ARGUS] COMMAND SYNC COMPLETE — all Argus commands are registered');
+    } catch (err) {
+        logger.error({ err }, 'Command initialization failed after gateway connection');
+        console.error('[ARGUS] COMMAND INITIALIZATION FAILED:', err?.stack || err);
     }
-
-    Object.assign(stats, loadedCommands.stats);
-
-    console.log(`[ARGUS] COMMAND LOAD — loaded=${stats.loaded} skipped=${stats.skipped} failed=${stats.failed}`);
-
-    if (stats.failed > 0) {
-        console.error('[ARGUS] COMMAND LOAD FAILURES:', JSON.stringify(stats.failedFiles));
-        throw new Error(`Command loading failed for ${stats.failed} file(s)`);
-    }
-
-    console.log('[ARGUS] COMMAND MODULES READY — registering commands before Discord gateway login...');
-} catch (err) {
-    logger.fatal({ err }, 'Command loading failed during startup');
-    console.error('[ARGUS] COMMAND STARTUP FAILED:', err?.stack || err);
-    process.exit(1);
 }
+
+console.log('[ARGUS] Core modules loaded — connecting to Discord before loading command modules...');
 
 const shutdownHandler = bootstrap.createShutdownHandler(client, {
     onSignal: (signal) => {
@@ -217,11 +216,15 @@ function leaveUnauthorized(guild) {
     }
 }
 
-client.once('clientReady', () => completeArgusStartup('clientReady'));
+client.once('clientReady', async () => {
+    await completeArgusStartup('clientReady');
+    void initializeCommandsAfterGateway();
+});
 
-client.ws.once('READY', () => {
+client.ws.once('READY', async () => {
     console.log('[ARGUS] GATEWAY READY DISPATCH RECEIVED');
-    setTimeout(() => completeArgusStartup('gatewayReady'), 250);
+    await completeArgusStartup('gatewayReady');
+    void initializeCommandsAfterGateway();
 });
 
 client.ws.on('READY', () => {
@@ -344,29 +347,15 @@ process.on('unhandledRejection', (reason) => {
 async function startArgus() {
     logger.info({
         guildId: process.env.GUILD_ID || null,
-        clientId: process.env.CLIENT_ID || null,
-        commandCount: client.commands.size
-    }, 'Starting Argus...');
+        clientId: process.env.CLIENT_ID || null
+    }, 'Starting Argus gateway...');
 
-    console.log(`[ARGUS] STARTING — commands=${client.commands.size}; registering commands before connecting to Discord...`);
+    console.log('[ARGUS] CONNECTING TO DISCORD GATEWAY...');
 
     try {
-        await syncApplicationCommands();
-        console.log('[ARGUS] COMMAND SYNC COMPLETE — commands are registered before gateway login');
-
-        console.log('[ARGUS] CONNECTING TO DISCORD GATEWAY...');
-
-        // Do not await login. The gateway is receiving heartbeats, but the
-        // discord.js login promise is not resolving in this environment.
-        // Keeping the connection alive lets discord.js process gateway events
-        // while command registration is already complete.
-        client.login(process.env.DISCORD_TOKEN).catch(err => {
-            console.error('[ARGUS] LOGIN FAILED:', err?.stack || err);
-            logger.fatal({ err }, 'Argus gateway login failed');
-            process.exit(1);
-        });
+        await client.login(process.env.DISCORD_TOKEN);
     } catch (err) {
-        console.error('[ARGUS] STARTUP FAILED BEFORE GATEWAY:', err?.stack || err);
+        console.error('[ARGUS] LOGIN FAILED:', err?.stack || err);
         throw err;
     }
 }
