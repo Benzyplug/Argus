@@ -32,7 +32,6 @@ const axios = require('axios');
 const { getSafeAxiosConfig } = require('../utils/ssrf');
 const { sanitizeChatInput } = require('../utils/validation');
 const { neutralizeMentions } = require('../utils/discord');
-const { stylePayload } = require('../utils/embedBuilder');
 
 const QWEN3_ASR_LANGUAGE_CODES = new Set([
     'zh', 'yue', 'en', 'ja', 'de', 'ko', 'ru', 'fr', 'pt', 'ar', 'it', 'es',
@@ -130,11 +129,8 @@ module.exports = {
                     { label: 'Transcribe', value: 'transcribe', description: 'Transcribe an audio asset', emoji: '◉' },
                     { label: 'Reset Context', value: 'reset', description: 'Clear your saved AI context', emoji: '↻' }
                 );
-            const styled = stylePayload({
-                content: '**AI Intelligence**\\n> Choose an operation below to begin.'
-            }, { interaction, client: interaction.client, commandName: 'ai' });
             await interaction.reply({
-                ...styled,
+                content: '**AI Intelligence**\\n> Choose an operation below to begin.',
                 components: [new ActionRowBuilder().addComponents(menu)],
                 ephemeral: true
             });
@@ -266,9 +262,6 @@ module.exports = {
             get(target, property, receiver) {
                 if (property === 'commandName') return 'ai';
                 if (property === 'options') return options;
-                if (property === 'reply') return payload => originalReply(stylePayload(payload, { interaction, client: interaction.client, commandName: 'ai' }));
-                if (property === 'editReply') return payload => originalEditReply(stylePayload(payload, { interaction, client: interaction.client, commandName: 'ai' }));
-                if (property === 'followUp') return payload => originalFollowUp(stylePayload(payload, { interaction, client: interaction.client, commandName: 'ai' }));
                 return Reflect.get(target, property, receiver);
             }
         });
