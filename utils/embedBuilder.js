@@ -127,17 +127,21 @@ function bannerEmbed(context = {}) {
 }
 
 function stylePayload(payload, context = {}) {
+  const result = typeof payload === 'string' ? {} : { ...(payload || {}) };
+
   if (typeof payload === 'string') {
-    const contentEmbed = styleEmbed({ title: 'Argus Result', description: payload }, context);
-    const banner = bannerEmbed(context);
-    return { embeds: banner ? [banner, contentEmbed] : [contentEmbed] };
-  }
-  const result = { ...(payload || {}) };
-  if (!Array.isArray(result.embeds) && typeof result.content === 'string' && result.content.trim()) {
-    const content = result.content;
-    const isError = /^\s*❌|\berror\b|\bfailed\b/i.test(content);
+    const content = payload.trim();
+    const isError = /^\s*(❌|⚠️|error|failed|failure)/i.test(content);
     result.embeds = [styleEmbed({
-      title: isError ? '❌ Request failed' : 'Argus Result',
+      title: isError ? '❌ Request failed' : '',
+      description: content.slice(0, 4096),
+      color: isError ? COLORS.error : COLORS[categoryFor(context.commandName)]
+    }, context)];
+  } else if (!Array.isArray(result.embeds) && typeof result.content === 'string' && result.content.trim()) {
+    const content = result.content.trim();
+    const isError = /^\s*(❌|⚠️|error|failed|failure)/i.test(content);
+    result.embeds = [styleEmbed({
+      title: isError ? '❌ Request failed' : '',
       description: content.slice(0, 4096),
       color: isError ? COLORS.error : COLORS[categoryFor(context.commandName)]
     }, context)];
@@ -146,13 +150,8 @@ function stylePayload(payload, context = {}) {
     result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
   }
 
-  // Discord renders embeds in array order. Keep the Argus banner as the
-  // first embed so it visually sits above the actual response content.
   const banner = bannerEmbed(context);
-  if (banner) {
-    result.embeds = [banner, ...(result.embeds || [])];
-  }
-
+  if (banner) result.embeds = [banner, ...(result.embeds || [])];
   return result;
 }
 
