@@ -18,7 +18,7 @@ const { archiveReport } = require('../utils/reports');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('linkook')
+        .setName('link-check')
         .setDescription('Search for a username across social platforms using Linkook')
         .addStringOption(option => 
             option.setName('username')
