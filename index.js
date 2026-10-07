@@ -75,17 +75,14 @@ function installResponseStyling(interaction) {
     };
 
     interaction.reply = async (options = {}) => {
-        if (typeof options === 'string') return originalReply(options);
         return originalReply(stylePayload(options, { interaction, client, commandName }));
     };
 
     interaction.editReply = async (options = {}) => {
-        if (typeof options === 'string') return originalEditReply(options);
         return originalEditReply(stylePayload(options, { interaction, client, commandName }));
     };
 
     interaction.followUp = async (options = {}) => {
-        if (typeof options === 'string') return originalFollowUp(options);
         return originalFollowUp(stylePayload(options, { interaction, client, commandName }));
     };
 }
