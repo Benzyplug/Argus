@@ -92,7 +92,7 @@ module.exports = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         if (!MONITOR_CHANNEL_ID) {
-            return interaction.editReply({ content: 'Monitoring is not configured: MONITOR_CHANNEL_ID is unset.' });
+            return interaction.editReply('⚠️ **Monitoring Unavailable**\n> Argus monitoring has not been configured yet.\n\n**Status** `Not configured`');
         }
 
         const subcommand = interaction.options.getSubcommand();
@@ -152,7 +152,7 @@ module.exports = {
                     monitors.delete(stopUrl);
                     await interaction.editReply(`Stopped monitoring ${stopUrl}`);
                 } else {
-                    await interaction.editReply(`Not monitoring ${stopUrl}`);
+                    await interaction.editReply(`⚠️ **Not Monitored**\n> `${stopUrl}` is not currently being monitored.`);
                 }
                 break;
             }
@@ -160,15 +160,15 @@ module.exports = {
             case 'stopall':
                 for (const entry of monitors.values()) clearInterval(entry.timer);
                 monitors.clear();
-                await interaction.editReply('Stopped monitoring all websites');
+                await interaction.editReply('✅ **Monitoring Cleared**\n> All active website monitors have been stopped.');
                 break;
 
             case 'list': {
                 if (monitors.size === 0) {
-                    await interaction.editReply('No websites are currently being monitored');
+                    await interaction.editReply('〢 **Monitoring**\n> No websites are currently being monitored.');
                 } else {
                     const urlList = Array.from(monitors.keys()).join('\n');
-                    await interaction.editReply(`Monitored websites:\n${urlList}`);
+                    await interaction.editReply(`〢 **Active Monitors**\n${urlList.split('\\n').map(url => '› `' + url + '`').join('\\n')}`);
                 }
                 break;
             }
