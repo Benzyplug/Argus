@@ -312,6 +312,8 @@ client.on('shardDisconnect', (event, shardId) => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
+    // Apply Argus visual styling to every reply, including permissions, limits and component errors.
+    installResponseStyling(interaction);
     if (ALLOWED_GUILDS.length > 0) {
         if (!interaction.guild || !ALLOWED_GUILDS.includes(interaction.guild.id)) {
             if (interaction.isRepliable?.()) {
@@ -372,8 +374,6 @@ client.on(Events.InteractionCreate, async interaction => {
             return;
         }
     }
-
-    installResponseStyling(interaction);
 
     const endTimer = commandDuration.startTimer({ command: cmdName });
 
