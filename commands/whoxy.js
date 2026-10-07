@@ -468,7 +468,7 @@ function createWhoxyEmbed(data, type) {
             embed.addFields({
                 name: '📊 History Summary',
                 value: `**Records Found:** ${data.recordCount}\n` +
-                       `**Analysis Status:** ${data.success ? 'Success' : 'Failed'}\n` +
+                       `**Analysis Status:** ${data.success ? '🟢 Success' : '🔴 Failed'}\n` +
                        `**Domain:** ${data.domain}`,
                 inline: true
             });
