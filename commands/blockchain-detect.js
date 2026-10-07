@@ -366,7 +366,7 @@ const BLOCKCHAIN_PATTERNS = [
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('blockchain-detect')
+        .setName('crypto-detect')
         .setDescription('Detect which blockchain network a cryptocurrency address belongs to')
         .addStringOption(option =>
             option.setName('address')
