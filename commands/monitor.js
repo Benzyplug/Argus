@@ -152,7 +152,7 @@ module.exports = {
                     monitors.delete(stopUrl);
                     await interaction.editReply(`Stopped monitoring ${stopUrl}`);
                 } else {
-                    await interaction.editReply(`⚠️ **Not Monitored**\n> `${stopUrl}` is not currently being monitored.`);
+                    await interaction.editReply(`⚠️ **Not Monitored**\n> \`${stopUrl}\` is not currently being monitored.`);
                 }
                 break;
             }
