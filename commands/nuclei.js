@@ -90,7 +90,7 @@ const crypto = require('crypto');
  */
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('nuclei')
+        .setName('nuclei-scan')
         .setDescription('🔍 Advanced OSINT username enumeration using Nuclei vulnerability scanner')
         .addStringOption(option =>
             option.setName('username')
