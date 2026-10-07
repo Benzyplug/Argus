@@ -15,7 +15,7 @@ const GROUPS = [
 ];
 
 function commandLine(items) {
-  return items.map(c => (c.restricted ? '🔒 ' : '› ') + '/' + c.name).join('  •  ');
+  return items.map(c => (c.restricted ? '🔒 ' : '› ') + '`/' + c.name + '`').join('  •  ');
 }
 
 module.exports = {
@@ -48,9 +48,9 @@ module.exports = {
       .setColor(0x5865f2)
       .setDescription(
         '**Available operations**\n' +
-        '> Choose a command below. Discord will show its options automatically.\n\n' +
+        'Choose a command below. Discord will show its options automatically.\n\n' +
         '**Support**\n' +
-        '> Contact ' + OWNER_MENTION + ' if you need help.'
+        'Contact ' + OWNER_MENTION + ' if you need help.'
       )
       .addFields(fields.slice(0, 25))
       .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0' })
