@@ -137,7 +137,7 @@ function embedToComponentText(input) {
   for (const field of (json.fields || [])) {
     const name = String(field.name || '').trim();
     const value = String(field.value || '').trim();
-    if (name && value) parts.push('**' + name + '**\\n' + value);
+    if (name && value) parts.push('**' + name + '**\n' + value);
     else if (value) parts.push(value);
   }
 
@@ -147,7 +147,7 @@ function embedToComponentText(input) {
     if (Number.isFinite(seconds)) parts.push('<t:' + seconds + ':F>');
   }
 
-  return parts.join('\\n\\n').slice(0, 4000) || '\u200b';
+  return parts.join('\n\n').slice(0, 4000) || '\u200b';
 }
 
 function componentsV2Payload(payload, context = {}) {
