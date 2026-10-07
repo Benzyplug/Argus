@@ -120,7 +120,7 @@ module.exports = {
         // Get API token from environment variables
         const token = process.env.PAPPERS_API_KEY;
         if (!token) {
-            return interaction.editReply('Error: PAPPERS_API_KEY not found in environment variables. Please contact the administrator.');
+            return interaction.editReply('⚠️ **Company Search Unavailable**\n> This intelligence source is currently unavailable.\n\n**Status** `Not configured`');
         }
 
         // Create a unique identifier for this request using timestamp and user ID
