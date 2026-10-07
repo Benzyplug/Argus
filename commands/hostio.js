@@ -28,7 +28,7 @@ const FIELD_TYPES = [
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('hostio')
+        .setName('host-lookup')
         .setDescription('Get domain information from host.io')
         .addSubcommand(subcommand =>
             subcommand
