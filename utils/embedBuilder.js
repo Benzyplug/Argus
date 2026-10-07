@@ -112,7 +112,7 @@ function styleEmbed(input, context = {}) {
   if (!fields.some(f => /(?:🕒|⏱️)\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
   if (isError && fields.length < 25) fields.push({ name: '🆘 Support', value: process.env.SUPPORT_URL || 'https://github.com/Benzyplug/Argus/issues', inline: false });
   embed.setFields(fields.slice(0, 25));
-  embed.setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0' });
+  embed.setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0 • <t:' + Math.floor(Date.now() / 1000) + ':t>' });
   return embed;
 }
 
