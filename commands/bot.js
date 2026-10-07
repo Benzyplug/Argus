@@ -9,7 +9,6 @@ module.exports = {
 
   async execute(interaction) {
     const bot = await interaction.client.user.fetch(true);
-    const banner = getArgusBanner(interaction.client);
     const commands = interaction.client.commands?.size ?? 0;
     const uptime = Math.floor(process.uptime());
     const days = Math.floor(uptime / 86400);
@@ -19,11 +18,12 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
-      .setTitle('⌬ ARGUS • BOT')
+      .setAuthor({ name: '〢 Argus' })
+      .setTitle('⌬ ARGUS')
       .setDescription(
         '**v' + pkg.version + '**\n' +
         'Open-source intelligence • Reconnaissance • Analysis\n\n' +
-        'Argus is created and developed by **ẞ€ÑZ¥**.'
+        'Created and developed by **ẞ€ÑZ¥**.'
       )
       .setThumbnail(bot.displayAvatarURL({ size: 1024 }))
       .addFields(
@@ -39,22 +39,18 @@ module.exports = {
           inline: true
         },
         {
-          name: '◈ Interfaces',
-          value: '`/commands`\n`/owner`\n`/bot`\nDirect slash commands',
+          name: '◈ Owner',
+          value: '<@1317480616048070656>\nFounder • Developer • Owner',
           inline: true
         },
         {
           name: '◈ Build',
-          value: '`v' + pkg.version + '`\nProduction build',
+          value: '`v' + pkg.version + '` • Production',
           inline: true
         }
       )
       .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0' })
       .setTimestamp();
-
-    if (banner) embed.setImage(banner);
-
-
 
     await interaction.reply({ embeds: [embed], allowedMentions: { parse: [] } });
   }
