@@ -32,7 +32,7 @@ module.exports = {
 
     async execute(interaction) {
         await interaction.reply(
-            '🔧 **Favicon** is temporarily being repaired. The command is registered and will be restored next.'
+            '⚠️ **Favicon Analysis Unavailable**\n> The favicon intelligence module is currently unavailable. Please try again later.'
         );
     }
 };
