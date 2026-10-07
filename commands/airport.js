@@ -86,7 +86,7 @@ async function handleIATASearch(interaction, iata, axios, getSafeAxiosConfig) {
     const airport = airports.find(a => a.code === iata);
 
     if (!airport) {
-        await interaction.editReply(`❌ **Airport Not Found**\n> No airport was found for IATA code `${iata}`.`);
+        await interaction.editReply(`❌ **Airport Not Found**\n> No airport was found for IATA code \`${iata}\`.`);
         return;
     }
 
