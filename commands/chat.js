@@ -27,7 +27,7 @@
  *        /ai message:"Generate Python script for data parsing" type:code
  */
 
-const { SlashCommandBuilder, AttachmentBuilder, MessageFlags, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { SlashCommandBuilder, AttachmentBuilder, MessageFlags, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder } = require('discord.js');
 const axios = require('axios');
 const { getSafeAxiosConfig } = require('../utils/ssrf');
 const { sanitizeChatInput } = require('../utils/validation');
@@ -68,13 +68,11 @@ function buildAiModal(mode, userId) {
     const definitions = {
         ask: [
             ['prompt', 'Prompt', 'Ask a question or describe what you need…', TextInputStyle.Paragraph, true],
-            ['model', 'Model', 'qwen3-vl-flash', TextInputStyle.Short, false],
             ['context', 'Context', 'general / osint / data / investigation / technical / report', TextInputStyle.Short, false]
         ],
         code: [
             ['request', 'Code request', 'Describe the code or automation you need…', TextInputStyle.Paragraph, true],
             ['language', 'Language', 'python / javascript / bash / powershell / sql', TextInputStyle.Short, false],
-            ['model', 'Model', 'qwen3-coder-plus', TextInputStyle.Short, false],
             ['new-context', 'Fresh context', 'true or false', TextInputStyle.Short, false]
         ],
         analyze: [
@@ -110,20 +108,7 @@ function buildAiModal(mode, userId) {
 }
 
 module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('ai')
-        .setDescription('AI analysis, research, coding and transcription')
-        .addStringOption(option =>
-            option.setName('mode')
-                .setDescription('Choose what you want Argus AI to do')
-                .setRequired(true)
-                .addChoices(
-                    { name: 'Ask', value: 'ask' },
-                    { name: 'Code', value: 'code' },
-                    { name: 'Analyze', value: 'analyze' },
-                    { name: 'Transcribe', value: 'transcribe' },
-                    { name: 'Reset Context', value: 'reset' }
-                )),
+    data: new SlashCommandBuilder().setName('ai').setDescription('AI analysis, research, coding and transcription'),
 
     /**
      * Execute the AI chat command
@@ -131,15 +116,28 @@ module.exports = {
      */
     async execute(interaction) {
         const isModal = interaction.isModalSubmit?.();
-        const subcommand = isModal
-            ? String(interaction.customId || '').split(':')[3]
-            : interaction.options.getString('mode');
+        const subcommand = isModal ? String(interaction.customId || '').split(':')[3] : null;
         const userId = interaction.user.id;
 
-        // The slash command chooses the operation. The actual input is collected
-        // in a native Discord modal so the command menu stays clean.
-        if (!isModal && subcommand !== 'reset') {
-            await interaction.showModal(buildAiModal(subcommand, userId));
+        if (!isModal) {
+            const menu = new StringSelectMenuBuilder()
+                .setCustomId('argus:ai-select:' + userId)
+                .setPlaceholder('Choose an AI operation…')
+                .addOptions(
+                    { label: 'Ask', value: 'ask', description: 'Ask Argus anything or request analysis', emoji: '◇' },
+                    { label: 'Code', value: 'code', description: 'Generate or explain code', emoji: '⌘' },
+                    { label: 'Analyze', value: 'analyze', description: 'Analyze findings or investigation data', emoji: '◈' },
+                    { label: 'Transcribe', value: 'transcribe', description: 'Transcribe an audio asset', emoji: '◉' },
+                    { label: 'Reset Context', value: 'reset', description: 'Clear your saved AI context', emoji: '↻' }
+                );
+            const styled = stylePayload({
+                content: '**AI Intelligence**\\n> Choose an operation below to begin.'
+            }, { interaction, client: interaction.client, commandName: 'ai' });
+            await interaction.reply({
+                ...styled,
+                components: [new ActionRowBuilder().addComponents(menu)],
+                ephemeral: true
+            });
             return;
         }
 
@@ -209,6 +207,29 @@ module.exports = {
 
     async handleInteraction(interaction) {
         const id = interaction.customId || '';
+
+        if (id.startsWith('argus:ai-select:')) {
+            const userId = id.split(':')[2];
+            if (interaction.user.id !== userId) {
+                await interaction.reply({ content: '❌ This menu belongs to another user.', flags: MessageFlags.Ephemeral });
+                return true;
+            }
+            const mode = interaction.values?.[0];
+            if (mode === 'reset') {
+                const fake = new Proxy(interaction, {
+                    get(target, property, receiver) {
+                        if (property === 'commandName') return 'ai';
+                        if (property === 'options') return { getSubcommand: () => 'reset', getString: () => 'all', getBoolean: () => null };
+                        return Reflect.get(target, property, receiver);
+                    }
+                });
+                await module.exports.execute(fake);
+                return true;
+            }
+            await interaction.showModal(buildAiModal(mode, userId));
+            return true;
+        }
+
         if (!id.startsWith('argus:ai-modal:')) return false;
 
         const parts = id.split(':');
