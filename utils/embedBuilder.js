@@ -105,8 +105,6 @@ function styleEmbed(input, context = {}) {
     if (targetIcon) embed.setThumbnail(targetIcon);
     else if (botIcon) embed.setThumbnail(botIcon);
   }
-  const banner = context.banner || getArgusBanner(context.client);
-  if (banner && !json.image?.url) { const url = safeUrl(banner); if (url) embed.setImage(url); }
   const title = json.title || '';
   const isError = /(^|\s)(❌|error|failed|failure)/i.test(title);
   if (title && !/^[✅❌⚠️]/.test(title)) embed.setTitle(title.slice(0, 256));
@@ -118,9 +116,21 @@ function styleEmbed(input, context = {}) {
   return embed;
 }
 
+function bannerEmbed(context = {}) {
+  const banner = context.banner || getArgusBanner(context.client);
+  const url = safeUrl(banner);
+  if (!url) return null;
+
+  return new EmbedBuilder()
+    .setColor(COLORS.general)
+    .setImage(url);
+}
+
 function stylePayload(payload, context = {}) {
   if (typeof payload === 'string') {
-    return { embeds: [styleEmbed({ title: 'Argus Result', description: payload }, context)] };
+    const contentEmbed = styleEmbed({ title: 'Argus Result', description: payload }, context);
+    const banner = bannerEmbed(context);
+    return { embeds: banner ? [banner, contentEmbed] : [contentEmbed] };
   }
   const result = { ...(payload || {}) };
   if (!Array.isArray(result.embeds) && typeof result.content === 'string' && result.content.trim()) {
@@ -135,6 +145,14 @@ function stylePayload(payload, context = {}) {
   } else if (Array.isArray(result.embeds)) {
     result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
   }
+
+  // Discord renders embeds in array order. Keep the Argus banner as the
+  // first embed so it visually sits above the actual response content.
+  const banner = bannerEmbed(context);
+  if (banner) {
+    result.embeds = [banner, ...(result.embeds || [])];
+  }
+
   return result;
 }
 
@@ -148,4 +166,4 @@ function loadingEmbed(interaction, toolName) {
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
 }
 
-module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner };
+module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner, bannerEmbed };
