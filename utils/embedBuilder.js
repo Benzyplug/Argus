@@ -130,24 +130,20 @@ function embedToComponentText(input) {
   const json = input instanceof EmbedBuilder ? input.toJSON() : { ...(input || {}) };
   const parts = [];
 
-  if (json.author?.name) parts.push('**' + String(json.author.name) + '**');
-  if (json.title) parts.push('## ' + String(json.title));
+  if (json.author?.name) parts.push(String(json.author.name));
+  if (json.title) parts.push(String(json.title));
   if (json.description) parts.push(String(json.description));
 
   for (const field of (json.fields || [])) {
     const name = String(field.name || '').trim();
     const value = String(field.value || '').trim();
-    if (name && value) parts.push('**' + name + '**\n' + value);
+    if (name && value) parts.push(name + '\\n' + value);
     else if (value) parts.push(value);
   }
 
   if (json.footer?.text) parts.push(String(json.footer.text));
-  if (json.timestamp) {
-    const seconds = Math.floor(new Date(json.timestamp).getTime() / 1000);
-    if (Number.isFinite(seconds)) parts.push('<t:' + seconds + ':F>');
-  }
 
-  return parts.join('\n\n').slice(0, 4000) || '\u200b';
+  return parts.join('\\n\\n').slice(0, 4000) || '\\u200b';
 }
 
 function componentsV2Payload(payload, context = {}) {
