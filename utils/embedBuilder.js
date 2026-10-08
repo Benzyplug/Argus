@@ -1,5 +1,17 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const fs = require('node:fs');
+const path = require('node:path');
 const pkg = require('../package.json');
+
+const ARGUS_BANNER_PATH = path.join(__dirname, '..', 'banner.png');
+
+function hasLocalArgusBanner() {
+  try { return fs.existsSync(ARGUS_BANNER_PATH); } catch { return false; }
+}
+
+function argusBannerFile() {
+  return hasLocalArgusBanner() ? new AttachmentBuilder(ARGUS_BANNER_PATH, { name: 'banner.png' }) : null;
+}
 
 const COLORS = Object.freeze({
   network: 0x3498db, identity: 0x9b59b6, blockchain: 0x2ecc71, aviation: 0x00a8ff,
@@ -117,6 +129,12 @@ function styleEmbed(input, context = {}) {
 }
 
 function bannerEmbed(context = {}) {
+  if (hasLocalArgusBanner()) {
+    return new EmbedBuilder()
+      .setColor(COLORS.general)
+      .setImage('attachment://banner.png');
+  }
+
   const banner = context.banner || getArgusBanner(context.client);
   const url = safeUrl(banner);
   if (!url) return null;
@@ -151,7 +169,11 @@ function stylePayload(payload, context = {}) {
   }
 
   const banner = bannerEmbed(context);
-  if (banner) result.embeds = [banner, ...(result.embeds || [])];
+  if (banner) {
+    result.embeds = [banner, ...(result.embeds || [])];
+    const bannerFile = argusBannerFile();
+    if (bannerFile) result.files = [bannerFile, ...(result.files || [])];
+  }
   return result;
 }
 
@@ -165,4 +187,4 @@ function loadingEmbed(interaction, toolName) {
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
 }
 
-module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner, bannerEmbed };
+module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner, bannerEmbed, argusBannerFile };
