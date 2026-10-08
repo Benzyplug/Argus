@@ -11,7 +11,7 @@ const { startHealthWriter, stopHealthWriter, markReady, markShuttingDown, writeS
 const { startMetricsServer, stopMetricsServer, commandDuration, commandErrors, ratelimitBlocks, discordEvents } = require('./utils/metrics');
 const { startHourlySweep, stopHourlySweep } = require('./utils/temp-sweep');
 const { pruneReports, startReportsSweep, stopReportsSweep } = require('./utils/reports');
-const { stylePayload, loadingEmbed, bannerEmbed } = require('./utils/embedBuilder');
+const { stylePayload, loadingEmbed, bannerEmbed, argusBannerFile } = require('./utils/embedBuilder');
 
 require('./utils/config');
 
@@ -69,6 +69,8 @@ function installResponseStyling(interaction) {
         const banner = bannerEmbed({ interaction, client, commandName });
         const loading = loadingEmbed(interaction, commandName);
         const payload = { embeds: banner ? [banner, loading] : [loading] };
+        const bannerFile = argusBannerFile();
+        if (bannerFile) payload.files = [bannerFile];
         if (options.ephemeral !== undefined) payload.ephemeral = options.ephemeral;
         if (options.flags !== undefined) payload.flags = options.flags;
         return originalReply(payload);
