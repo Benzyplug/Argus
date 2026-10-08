@@ -227,6 +227,16 @@ let commandInitializationStarted = false;
 async function completeArgusStartup(source) {
     if (startupReadyHandled) return;
     startupReadyHandled = true;
+
+    // Force-fetch the bot user so Discord's current profile banner is available
+    // before Argus starts styling replies. discord.js notes that banner data can
+    // require a force fetch before it is populated.
+    try {
+        await client.user?.fetch(true);
+    } catch (err) {
+        logger.warn({ err }, 'Failed to refresh Argus profile banner');
+    }
+
     console.log(`[ARGUS] GATEWAY READY — source=${source}`);
     updatePresence();
     presenceTimer = setInterval(updatePresence, 3000);
