@@ -1,4 +1,4 @@
-const { EmbedBuilder, ContainerBuilder, MediaGalleryBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const pkg = require('../package.json');
 
 const COLORS = Object.freeze({
@@ -112,7 +112,7 @@ function styleEmbed(input, context = {}) {
   if (!fields.some(f => /(?:🕒|⏱️)\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
   if (isError && fields.length < 25) fields.push({ name: '🆘 Support', value: process.env.SUPPORT_URL || 'https://github.com/Benzyplug/Argus/issues', inline: false });
   embed.setFields(fields.slice(0, 25));
-  embed.setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0 • <t:' + Math.floor(Date.now() / 1000) + ':t>' });
+  embed.setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0' });
   return embed;
 }
 
@@ -126,71 +126,12 @@ function bannerEmbed(context = {}) {
     .setImage(url);
 }
 
-function embedToComponentText(input) {
-  const json = input instanceof EmbedBuilder ? input.toJSON() : { ...(input || {}) };
-  const parts = [];
-
-  if (json.author?.name) parts.push(String(json.author.name));
-  if (json.title) parts.push(String(json.title));
-  if (json.description) parts.push(String(json.description));
-
-  for (const field of (json.fields || [])) {
-    const name = String(field.name || '').trim();
-    const value = String(field.value || '').trim();
-    if (name && value) parts.push(name + '\\n' + value);
-    else if (value) parts.push(value);
-  }
-
-  if (json.footer?.text) parts.push(String(json.footer.text));
-
-  return parts.join('\\n\\n').slice(0, 4000) || '\\u200b';
-}
-
-function componentsV2Payload(payload, context = {}) {
-  const result = typeof payload === 'string' ? {} : { ...(payload || {}) };
-  const embeds = Array.isArray(result.embeds) ? result.embeds : [];
-  const banner = bannerEmbed(context);
-  const container = new ContainerBuilder().setAccentColor(COLORS[categoryFor(context.commandName)] || COLORS.general);
-
-  if (banner) {
-    const bannerJson = banner.toJSON();
-    const bannerUrl = bannerJson.image?.url;
-    if (bannerUrl) {
-      container.addMediaGalleryComponents(
-        new MediaGalleryBuilder().addItems({ media: { url: bannerUrl }, description: 'ARGUS' })
-      );
-    }
-  }
-
-  if (typeof payload === 'string' && payload.trim()) {
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(payload.trim().slice(0, 4000)));
-  } else if (typeof result.content === 'string' && result.content.trim()) {
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(result.content.trim().slice(0, 4000)));
-  }
-
-  for (const embed of embeds) {
-    container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(embedToComponentText(embed))
-    );
-  }
-
-  if (!container.components.length) {
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent('\u200b'));
-  }
-
-  result.components = [container, ...(Array.isArray(result.components) ? result.components : [])];
-  result.flags = (Number(result.flags) || 0) | MessageFlags.IsComponentsV2;
-  delete result.embeds;
-  delete result.content;
-  return result;
-}
-
 function stylePayload(payload, context = {}) {
   const result = typeof payload === 'string' ? {} : { ...(payload || {}) };
 
   if (typeof payload === 'string') {
     const content = payload.trim();
-    const isError = /^\\s*(❌|⚠️|error|failed|failure)/i.test(content);
+    const isError = /^\s*(❌|⚠️|error|failed|failure)/i.test(content);
     result.embeds = [styleEmbed({
       title: isError ? '❌ Request failed' : '',
       description: content.slice(0, 4096),
@@ -198,7 +139,7 @@ function stylePayload(payload, context = {}) {
     }, context)];
   } else if (!Array.isArray(result.embeds) && typeof result.content === 'string' && result.content.trim()) {
     const content = result.content.trim();
-    const isError = /^\\s*(❌|⚠️|error|failed|failure)/i.test(content);
+    const isError = /^\s*(❌|⚠️|error|failed|failure)/i.test(content);
     result.embeds = [styleEmbed({
       title: isError ? '❌ Request failed' : '',
       description: content.slice(0, 4096),
@@ -209,7 +150,9 @@ function stylePayload(payload, context = {}) {
     result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
   }
 
-  return componentsV2Payload(result, context);
+  const banner = bannerEmbed(context);
+  if (banner) result.embeds = [banner, ...(result.embeds || [])];
+  return result;
 }
 
 function loadingEmbed(interaction, toolName) {
@@ -222,4 +165,4 @@ function loadingEmbed(interaction, toolName) {
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
 }
 
-module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, componentsV2Payload, loadingEmbed, faviconForTarget, getArgusBanner, bannerEmbed };
+module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner, bannerEmbed };
