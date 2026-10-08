@@ -110,7 +110,7 @@ function styleEmbed(input, context = {}) {
   const bot = context.client?.user;
   const botName = bot?.username || process.env.BOT_NAME || 'Argus';
   const botIcon = bot?.displayAvatarURL?.({ extension: 'png', size: 64 });
-  if (!json.author) embed.setAuthor({ name: '〢 Intelligence' });
+  if (!json.author) embed.setAuthor({ name: '〢 𝐈𝐧𝐭𝐞𝐥𝐥𝐢𝐠𝐞𝐧𝐜𝐞' });
   const target = context.target || targetFromInteraction(context.interaction);
   if (!json.thumbnail?.url) {
     const targetIcon = faviconForTarget(target);
@@ -124,24 +124,12 @@ function styleEmbed(input, context = {}) {
   if (!fields.some(f => /(?:🕒|⏱️)\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
   if (isError && fields.length < 25) fields.push({ name: '🆘 Support', value: process.env.SUPPORT_URL || 'https://github.com/Benzyplug/Argus/issues', inline: false });
   embed.setFields(fields.slice(0, 25));
-  embed.setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0' });
+  embed.setFooter({ text: '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥' });
   return embed;
 }
 
 function bannerEmbed(context = {}) {
-  if (hasLocalArgusBanner()) {
-    return new EmbedBuilder()
-      .setColor(COLORS.general)
-      .setImage('attachment://banner.png');
-  }
-
-  const banner = context.banner || getArgusBanner(context.client);
-  const url = safeUrl(banner);
-  if (!url) return null;
-
-  return new EmbedBuilder()
-    .setColor(COLORS.general)
-    .setImage(url);
+  return null;
 }
 
 function stylePayload(payload, context = {}) {
@@ -168,11 +156,15 @@ function stylePayload(payload, context = {}) {
     result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
   }
 
-  const banner = bannerEmbed(context);
-  if (banner) {
-    result.embeds = [banner, ...(result.embeds || [])];
-    const bannerFile = argusBannerFile();
-    if (bannerFile) result.files = [bannerFile, ...(result.files || [])];
+  const bannerFile = argusBannerFile();
+  if (bannerFile) {
+    const embeds = result.embeds || [];
+    if (embeds.length) {
+      const first = embeds[0] instanceof EmbedBuilder ? embeds[0] : new EmbedBuilder(embeds[0]);
+      first.setImage('attachment://banner.png');
+      result.embeds = [first, ...embeds.slice(1)];
+    }
+    result.files = [bannerFile, ...(result.files || [])];
   }
   return result;
 }
