@@ -68,9 +68,9 @@ function installResponseStyling(interaction) {
     interaction.deferReply = async (options = {}) => {
         const banner = bannerEmbed({ interaction, client, commandName });
         const loading = loadingEmbed(interaction, commandName);
-        const payload = { embeds: banner ? [banner, loading] : [loading] };
+        const payload = { embeds: [loading] };
         const bannerFile = argusBannerFile();
-        if (bannerFile) payload.files = [bannerFile];
+        if (bannerFile) { loading.setImage('attachment://banner.png'); payload.files = [bannerFile]; }
         if (options.ephemeral !== undefined) payload.ephemeral = options.ephemeral;
         if (options.flags !== undefined) payload.flags = options.flags;
         return originalReply(payload);
