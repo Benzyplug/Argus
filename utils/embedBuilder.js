@@ -110,7 +110,6 @@ function styleEmbed(input, context = {}) {
   const bot = context.client?.user;
   const botName = bot?.username || process.env.BOT_NAME || 'Argus';
   const botIcon = bot?.displayAvatarURL?.({ extension: 'png', size: 64 });
-  if (!json.author) embed.setAuthor({ name: '〢 𝐈𝐧𝐭𝐞𝐥𝐥𝐢𝐠𝐞𝐧𝐜𝐞' });
   const target = context.target || targetFromInteraction(context.interaction);
   if (!json.thumbnail?.url) {
     const targetIcon = faviconForTarget(target);
@@ -175,7 +174,7 @@ function loadingEmbed(interaction, toolName) {
     title: '⌁ Processing…',
     description: '> `〢` Processing your request…',
     fields: [{ name: '🛰️ Tool', value: '`' + (toolName || interaction.commandName || 'Argus') + '`', inline: true }],
-    footer: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0'
+    footer: '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥'
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
 }
 
