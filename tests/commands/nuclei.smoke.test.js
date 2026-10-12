@@ -26,7 +26,7 @@ function makeInteraction({ options = {}, ...rest } = {}) {
         user: { id: 'u1', tag: 'user#0001' },
         guild: { id: 'g1', name: 'guild' },
         member: { roles: { cache: { some: () => false } } },
-        commandName: 'bob-nuclei',
+        commandName: 'nuclei-scan',
         options: {
             getString: (k) => options[k] ?? null,
             getInteger: (k) => options[k] ?? null,
@@ -45,7 +45,7 @@ function makeInteraction({ options = {}, ...rest } = {}) {
     };
 }
 
-describe('bob-nuclei smoke', () => {
+describe('nuclei-scan smoke', () => {
     let cmd;
 
     beforeEach(() => {
@@ -62,7 +62,7 @@ describe('bob-nuclei smoke', () => {
 
     it('module exports data and execute', () => {
         expect(cmd.data).toBeDefined();
-        expect(cmd.data.name).toBe('bob-nuclei');
+        expect(cmd.data.name).toBe('nuclei-scan');
         expect(typeof cmd.execute).toBe('function');
     });
 
