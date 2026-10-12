@@ -50,7 +50,7 @@ function makeInteraction({ options = {}, ...rest } = {}) {
         user: { id: 'u1', tag: 'user#0001' },
         guild: { id: 'g1', name: 'guild' },
         member: { roles: { cache: { some: () => false } } },
-        commandName: 'bob-redirect-check',
+        commandName: 'redirect-check',
         options: {
             getString: (k) => options[k] ?? null,
             getInteger: (k) => options[k] ?? null,
@@ -69,7 +69,7 @@ function makeInteraction({ options = {}, ...rest } = {}) {
     };
 }
 
-describe('bob-redirect-check smoke', () => {
+describe('redirect-check smoke', () => {
     let cmd;
 
     beforeEach(() => {
@@ -86,7 +86,7 @@ describe('bob-redirect-check smoke', () => {
 
     it('module exports data and execute', () => {
         expect(cmd.data).toBeDefined();
-        expect(cmd.data.name).toBe('bob-redirect-check');
+        expect(cmd.data.name).toBe('redirect-check');
         expect(typeof cmd.execute).toBe('function');
     });
 
