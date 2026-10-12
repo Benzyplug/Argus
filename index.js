@@ -12,6 +12,7 @@ const { startMetricsServer, stopMetricsServer, commandDuration, commandErrors, r
 const { startHourlySweep, stopHourlySweep } = require('./utils/temp-sweep');
 const { pruneReports, startReportsSweep, stopReportsSweep } = require('./utils/reports');
 const { installArgusResponses } = require('./utils/interactionHelper');
+const { handleInteractionError } = require('./utils/errorHandler');
 
 require('./utils/config');
 
@@ -314,11 +315,7 @@ client.on(Events.InteractionCreate, async interaction => {
                 const handled = await command.handleInteraction(interaction);
                 if (handled) return;
             } catch (error) {
-                logger.error({ err: error, customId: interaction.customId }, 'Argus command interaction failed');
-                try {
-                    if (interaction.replied || interaction.deferred) await interaction.followUp({ content: '❌ The operation could not be completed.', flags: MessageFlags.Ephemeral });
-                    else await interaction.reply({ content: '❌ The operation could not be completed.', flags: MessageFlags.Ephemeral });
-                } catch {}
+                await handleInteractionError(interaction, error, { command: interaction.commandName || 'component' });
                 return;
             }
         }
@@ -362,17 +359,7 @@ client.on(Events.InteractionCreate, async interaction => {
         commandErrors.inc({ command: cmdName, reason: error.name || 'Error' });
         logger.error({ command: cmdName, err: error }, 'Error executing command');
 
-        const msg = 'There was an error while executing this command! Please try again later.';
-
-        try {
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: msg, flags: MessageFlags.Ephemeral });
-            } else {
-                await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
-            }
-        } catch (e) {
-            logger.error({ err: e }, 'Failed to send error message to user');
-        }
+        await handleInteractionError(interaction, error, { command: cmdName });
     } finally {
         endTimer();
     }
