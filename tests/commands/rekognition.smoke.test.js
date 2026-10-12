@@ -117,7 +117,7 @@ describe('image-ai smoke', () => {
 
     it('module exports data and execute', () => {
         expect(cmd.data).toBeDefined();
-        expect(cmd.data.name).toBe('bob-rekognition');
+        expect(cmd.data.name).toBe('image-ai');
         expect(typeof cmd.execute).toBe('function');
     });
 
