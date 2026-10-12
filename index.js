@@ -11,7 +11,7 @@ const { startHealthWriter, stopHealthWriter, markReady, markShuttingDown, writeS
 const { startMetricsServer, stopMetricsServer, commandDuration, commandErrors, ratelimitBlocks, discordEvents } = require('./utils/metrics');
 const { startHourlySweep, stopHourlySweep } = require('./utils/temp-sweep');
 const { pruneReports, startReportsSweep, stopReportsSweep } = require('./utils/reports');
-const { stylePayload, loadingEmbed, argusBannerFile } = require('./utils/embedBuilder');
+const { installArgusResponses } = require('./utils/interactionHelper');
 
 require('./utils/config');
 
@@ -55,38 +55,6 @@ const PRESENCE_MESSAGES = [
 
 let presenceIndex = 0;
 let presenceTimer = null;
-
-function installResponseStyling(interaction) {
-    if (interaction.__argusResponseStyling) return;
-    interaction.__argusResponseStyling = true;
-
-    const originalReply = interaction.reply.bind(interaction);
-    const originalEditReply = interaction.editReply.bind(interaction);
-    const originalFollowUp = interaction.followUp.bind(interaction);
-    const commandName = interaction.commandName || 'argus';
-
-    interaction.deferReply = async (options = {}) => {
-        const loading = loadingEmbed(interaction, commandName);
-        const payload = { embeds: [loading] };
-        const bannerFile = argusBannerFile();
-        if (bannerFile) { loading.setImage('attachment://banner.png'); payload.files = [bannerFile]; }
-        if (options.ephemeral !== undefined) payload.ephemeral = options.ephemeral;
-        if (options.flags !== undefined) payload.flags = options.flags;
-        return originalReply(payload);
-    };
-
-    interaction.reply = async (options = {}) => {
-        return originalReply(stylePayload(options, { interaction, client, commandName }));
-    };
-
-    interaction.editReply = async (options = {}) => {
-        return originalEditReply(stylePayload(options, { interaction, client, commandName }));
-    };
-
-    interaction.followUp = async (options = {}) => {
-        return originalFollowUp(stylePayload(options, { interaction, client, commandName }));
-    };
-}
 
 function updatePresence() {
     if (!client.user) return;
@@ -323,7 +291,7 @@ client.on('shardDisconnect', (event, shardId) => {
 
 client.on(Events.InteractionCreate, async interaction => {
     // Apply Argus visual styling to every reply, including permissions, limits and component errors.
-    installResponseStyling(interaction);
+    installArgusResponses(interaction, client);
     if (ALLOWED_GUILDS.length > 0) {
         if (!interaction.guild || !ALLOWED_GUILDS.includes(interaction.guild.id)) {
             if (interaction.isRepliable?.()) {
