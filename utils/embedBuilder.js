@@ -19,6 +19,7 @@ const COLORS = Object.freeze({
   success: 0x2ecc71, error: 0xe74c3c, warning: 0xf1c40f
 });
 const ERROR_COLOR = COLORS.error;
+const ARGUS_FOOTER = () => '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥';
 
 function getArgusBanner(client) {
   try {
@@ -72,7 +73,7 @@ function createArgusEmbed(config = {}, context = {}) {
   if (config.thumbnail) { const url = safeUrl(config.thumbnail); if (url) embed.setThumbnail(url); }
   if (config.banner) { const url = safeUrl(config.banner); if (url) embed.setImage(url); }
   if (config.author) embed.setAuthor(config.author);
-  if (config.footer) embed.setFooter({ text: String(config.footer).slice(0, 2048) });
+  if (config.footer !== false) embed.setFooter({ text: String(config.footer || ARGUS_FOOTER()).slice(0, 2048) });
   if (config.timestamp !== false) embed.setTimestamp(config.timestamp instanceof Date ? config.timestamp : new Date());
   return embed;
 }
@@ -123,7 +124,7 @@ function styleEmbed(input, context = {}) {
   if (!fields.some(f => /(?:🕒|⏱️)\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
   if (isError && fields.length < 25) fields.push({ name: '🆘 Support', value: process.env.SUPPORT_URL || 'https://github.com/Benzyplug/Argus/issues', inline: false });
   embed.setFields(fields.slice(0, 25));
-  embed.setFooter({ text: '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥' });
+  embed.setFooter({ text: ARGUS_FOOTER() });
   return embed;
 }
 
@@ -174,8 +175,8 @@ function loadingEmbed(interaction, toolName) {
     title: '⌁ Processing…',
     description: '> `〢` Processing your request…',
     fields: [{ name: '🛰️ Tool', value: '`' + (toolName || interaction.commandName || 'Argus') + '`', inline: true }],
-    footer: '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥'
+    footer: ARGUS_FOOTER()
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
 }
 
-module.exports = { COLORS, ERROR_COLOR, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner, bannerEmbed, argusBannerFile };
+module.exports = { COLORS, ERROR_COLOR, ARGUS_FOOTER, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner, bannerEmbed, argusBannerFile };
