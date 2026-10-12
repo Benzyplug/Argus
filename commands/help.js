@@ -53,7 +53,7 @@ module.exports = {
         'Contact ' + OWNER_MENTION + ' if you need help.'
       )
       .addFields(fields.slice(0, 25))
-      .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0' })
+      .setFooter({ text: '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥' })
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed], allowedMentions: { parse: [] } });
