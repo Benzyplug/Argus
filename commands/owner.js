@@ -19,7 +19,7 @@ module.exports = {
       .setDescription('**Owner & creator profile**\n\n' +
         '╭─ **Identity**\n' +
         '│ **Name:** ẞ€ÑZ¥\n' +
-        '        '│ **Age:** 17\n' +
+        '│ **Age:** 17\n' +
         '│ **Countries:** 🇬🇧 UK • 🇳🇬 NG\n' +
         '╰────────────────────')
       .addFields(
