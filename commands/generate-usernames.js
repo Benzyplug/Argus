@@ -67,10 +67,10 @@ module.exports = {
         });
 
         const content =
-            '# Argus Username Variations\\n' +
-            '# For: ' + firstName + ' ' + lastName + '\\n' +
-            '# Total: ' + usernames.length + '\\n\\n' +
-            usernames.join('\\n') + '\\n';
+            '# Argus Username Variations\n' +
+            '# For: ' + firstName + ' ' + lastName + '\n' +
+            '# Total: ' + usernames.length + '\n\n' +
+            usernames.join('\n') + '\n';
 
         const attachment = new AttachmentBuilder(
             Buffer.from(content, 'utf8'),
@@ -79,14 +79,14 @@ module.exports = {
 
         const preview = usernames.slice(0, 20)
             .map((username, index) => (index + 1) + '. ' + username)
-            .join('\\n');
+            .join('\n');
 
         return interaction.reply({
             content:
-                '👤 **Username Variations**\\n' +
-                '**For:** ' + firstName + ' ' + lastName + '\\n' +
-                '**Total:** ' + usernames.length + '\\n\\n' +
-                '```\\n' + preview + '\\n```',
+                '👤 **Username Variations**\n' +
+                '**For:** ' + firstName + ' ' + lastName + '\n' +
+                '**Total:** ' + usernames.length + '\n\n' +
+                '```\n' + preview + '\n```',
             files: [attachment],
             flags: MessageFlags.Ephemeral
         });
@@ -96,7 +96,7 @@ module.exports = {
 function clean(value) {
     return String(value || '')
         .normalize('NFKC')
-        .replace(/[\\r\\n\\0]/g, '')
+        .replace(/[\\r\n\\0]/g, '')
         .replace(/[<>"';&|\`$(){}[\]\\]/g, '')
         .trim()
         .slice(0, 100);
