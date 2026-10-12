@@ -30,21 +30,21 @@ describe('checkPermission', () => {
     });
 
     it('blocks restricted command when user lacks required permission', () => {
-        const result = checkPermission(makeInteraction({ commandName: 'bob-nuclei', hasPerm: false }));
+        const result = checkPermission(makeInteraction({ commandName: 'nuclei-scan', hasPerm: false }));
         expect(result.allowed).toBe(false);
         expect(result.reason).toMatch(/permission/i);
     });
 
     it('allows restricted command when user has required permission', () => {
         const result = checkPermission(makeInteraction({
-            commandName: 'bob-nuclei',
+            commandName: 'nuclei-scan',
             hasPerm: PermissionFlagsBits.Administrator
         }));
         expect(result.allowed).toBe(true);
     });
 
     it('blocks restricted command outside a guild (DM)', () => {
-        const result = checkPermission(makeInteraction({ commandName: 'bob-nuclei', guild: false }));
+        const result = checkPermission(makeInteraction({ commandName: 'nuclei-scan', guild: false }));
         expect(result.allowed).toBe(false);
         expect(result.reason).toMatch(/server/i);
     });
@@ -52,7 +52,7 @@ describe('checkPermission', () => {
     it('allows via OSINT_ALLOWED_ROLES override', () => {
         process.env.OSINT_ALLOWED_ROLES = 'role-a, role-b';
         const result = checkPermission(makeInteraction({
-            commandName: 'bob-sherlock',
+            commandName: 'sherlock',
             hasPerm: false,
             roleIds: ['role-b']
         }));
@@ -62,21 +62,21 @@ describe('checkPermission', () => {
     it('still blocks when OSINT_ALLOWED_ROLES set but user lacks any allowed role', () => {
         process.env.OSINT_ALLOWED_ROLES = 'role-a,role-b';
         const result = checkPermission(makeInteraction({
-            commandName: 'bob-sherlock',
+            commandName: 'sherlock',
             hasPerm: false,
             roleIds: ['some-other-role']
         }));
         expect(result.allowed).toBe(false);
     });
 
-    it('bob-nuclei requires Administrator (not ManageGuild)', () => {
-        expect(RESTRICTED_COMMANDS['bob-nuclei']).toBe(PermissionFlagsBits.Administrator);
+    it('nuclei-scan requires Administrator (not ManageGuild)', () => {
+        expect(RESTRICTED_COMMANDS['nuclei-scan']).toBe(PermissionFlagsBits.Administrator);
     });
 
     it('all other restricted commands require ManageGuild', () => {
         const expectManageGuild = [
-            'bob-monitor', 'bob-rekognition', 'bob-jwt', 'bob-ghunt',
-            'bob-sherlock', 'bob-maigret', 'bob-linkook', 'bob-xeuledoc'
+            'monitor', 'image-ai', 'jwt', 'google-investigate',
+            'sherlock', 'maigret', 'link-check', 'doc-meta'
         ];
         for (const cmd of expectManageGuild) {
             expect(RESTRICTED_COMMANDS[cmd]).toBe(PermissionFlagsBits.ManageGuild);
