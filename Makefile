@@ -1,10 +1,10 @@
-# Discord OSINT Assistant — ops wrapper
+# Argus — ops wrapper
 #
 # Wraps systemd + docker-compose lifecycle so common ops are one target.
 # Day-to-day dev still uses `bun run <script>` (see package.json).
 
-INSTALL_DIR    ?= /opt/discord-osint-assistant
-SERVICE_NAME   ?= discord-osint-assistant
+INSTALL_DIR    ?= /opt/argus
+SERVICE_NAME   ?= argus
 SERVICE_FILE   ?= deploy/$(SERVICE_NAME).service
 ENV_FILE       ?= /etc/$(SERVICE_NAME).env
 BOT_USER       ?= botuser
