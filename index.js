@@ -402,6 +402,8 @@ async function startArgus() {
     }
 
     const commandPayload = [...client.commands.values()].map(command => command.data.toJSON());
+    bootstrap.validateCommandPayloads(commandPayload);
+    console.log('[ARGUS] COMMAND VALIDATION PASSED');
     console.log('[ARGUS] REGISTERING FULL COMMAND DEFINITIONS — including all options...');
 
     // Register the complete command schemas once. No metadata-only registration.
