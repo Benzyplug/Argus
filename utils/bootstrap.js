@@ -100,6 +100,28 @@ function loadCommands(commandsPath) {
     return { commands, stats };
 }
 
+function validateCommandPayloads(commands) {
+    const errors = [];
+    const names = new Set();
+    for (const command of commands) {
+        if (!command?.name || command.name.length > 32) errors.push('Invalid command name: ' + (command?.name || '<missing>'));
+        if (!command?.description || command.description.length > 100) errors.push('Invalid description for /' + (command?.name || '<missing>'));
+        if (names.has(command?.name)) errors.push('Duplicate command: /' + command.name);
+        names.add(command?.name);
+        for (const option of command?.options || []) {
+            if (!option.name || option.name.length > 32) errors.push('Invalid option name in /' + command.name);
+            if (!option.description || option.description.length > 100) errors.push('Invalid option description in /' + command.name + ' ' + (option.name || ''));
+            for (const choice of option.choices || []) {
+                if (String(choice.name || '').length > 100) errors.push('Choice name too long in /' + command.name);
+                if (typeof choice.value === 'string' && choice.value.length > 100) errors.push('Choice value too long in /' + command.name);
+            }
+        }
+    }
+    if (commands.length > 100) errors.push('Discord supports at most 100 application commands');
+    if (errors.length) throw new Error('Command validation failed:\n- ' + errors.join('\n- '));
+    return true;
+}
+
 function parseAllowedGuilds(envValue) {
     return String(envValue || '')
         .split(',')
@@ -166,6 +188,7 @@ function createShutdownHandler(client, hooks = {}) {
 module.exports = {
     COMMAND_METADATA,
     loadCommands,
+    validateCommandPayloads,
     parseAllowedGuilds,
     sweepBootTemp,
     createShutdownHandler,
