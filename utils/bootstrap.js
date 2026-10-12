@@ -76,7 +76,7 @@ function loadCommands(commandsPath) {
                 command.data.setName(metadata.name).setDescription(metadata.description);
             }
 
-            const json = command.data.toJSON();
+            const json = typeof command.data.toJSON === 'function' ? command.data.toJSON() : command.data;
             if (!json.name || !json.description) {
                 throw new Error('Command data is missing name or description');
             }
