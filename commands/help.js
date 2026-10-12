@@ -2,7 +2,6 @@ const {
   SlashCommandBuilder,
   EmbedBuilder,
   ActionRowBuilder,
-  StringSelectMenuBuilder,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -10,6 +9,7 @@ const {
 } = require('discord.js');
 const { RESTRICTED_COMMANDS } = require('../utils/permissions');
 const pkg = require('../package.json');
+const { createSelectMenu } = require('../utils/components');
 
 const OWNER_ID = '1317480616048070656';
 const OWNER_MENTION = '<@' + OWNER_ID + '>';
@@ -77,21 +77,17 @@ function buildHelpEmbed(client, selectedKey = null) {
 }
 
 function buildHelpComponents(selectedKey = null) {
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId(HELP_MENU_ID)
-    .setPlaceholder('Choose an Argus category')
-    .addOptions([
-      { label: 'All operations', value: 'all', description: 'Show every Argus command group', emoji: '🧿', default: !selectedKey },
-      ...GROUPS.map(group => ({
-        label: group.title.replace(/^\S+\s*/, '').slice(0, 100),
-        value: group.key,
-        description: group.description.slice(0, 100),
-        default: selectedKey === group.key
-      })),
-      { label: 'Find a command…', value: 'custom', description: 'Open a command finder modal', emoji: '🔎' }
-    ]);
-
-  return [new ActionRowBuilder().addComponents(menu)];
+  const options = [
+    { label: 'All operations', value: 'all', description: 'Show every Argus command group', emoji: '🧿', default: !selectedKey },
+    ...GROUPS.map(group => ({
+      label: group.title.replace(/^\\S+\\s*/, '').slice(0, 100),
+      value: group.key,
+      description: group.description.slice(0, 100),
+      default: selectedKey === group.key
+    })),
+    { label: 'Find a command…', value: 'custom', description: 'Open a command finder modal', emoji: '🔎' }
+  ];
+  return [createSelectMenu(HELP_MENU_ID, 'Choose an Argus category', options)];
 }
 
 function buildCommandEmbed(client, query) {
