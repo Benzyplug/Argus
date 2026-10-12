@@ -1,4 +1,5 @@
 const { MessageFlags } = require('discord.js');
+const { isInteractionValid, safeShowModal: validatedShowModal } = require('./interactionValidator');
 const { stylePayload, loadingEmbed, argusBannerFile } = require('./embedBuilder');
 
 function sanitizeEditPayload(options = {}) {
@@ -49,6 +50,7 @@ function installArgusResponses(interaction, client) {
 }
 
 async function safeRespond(interaction, payload, { ephemeral = false } = {}) {
+  if (!isInteractionValid(interaction)) return false;
   const options = typeof payload === 'string' ? { content: payload } : { ...(payload || {}) };
   if (ephemeral && !interaction.deferred && !interaction.replied) options.flags = MessageFlags.Ephemeral;
   if (interaction.deferred && !interaction.replied) return interaction.editReply(sanitizeEditPayload(options));
@@ -57,9 +59,7 @@ async function safeRespond(interaction, payload, { ephemeral = false } = {}) {
 }
 
 async function safeShowModal(interaction, modal) {
-  if (!interaction || interaction.replied || interaction.deferred) return false;
-  await interaction.showModal(modal);
-  return true;
+  return validatedShowModal(interaction, modal);
 }
 
 module.exports = { installArgusResponses, safeRespond, safeShowModal, sanitizeEditPayload };
