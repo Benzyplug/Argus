@@ -36,7 +36,7 @@ function makeInteraction({ options = {}, ...rest } = {}) {
         user: { id: 'u1', tag: 'user#0001' },
         guild: { id: 'g1', name: 'guild' },
         member: { roles: { cache: { some: () => false } } },
-        commandName: 'bob-jwt',
+        commandName: 'jwt',
         options: {
             getString: (k) => options[k] ?? null,
             getInteger: (k) => options[k] ?? null,
@@ -57,7 +57,7 @@ function makeInteraction({ options = {}, ...rest } = {}) {
 
 const VALID_JWT = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc';
 
-describe('bob-jwt smoke', () => {
+describe('jwt smoke', () => {
     let cmd;
 
     beforeEach(() => {
@@ -74,7 +74,7 @@ describe('bob-jwt smoke', () => {
 
     it('module exports data and execute', () => {
         expect(cmd.data).toBeDefined();
-        expect(cmd.data.name).toBe('bob-jwt');
+        expect(cmd.data.name).toBe('jwt');
         expect(typeof cmd.execute).toBe('function');
     });
 
