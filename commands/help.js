@@ -10,6 +10,7 @@ const {
 const { RESTRICTED_COMMANDS } = require('../utils/permissions');
 const pkg = require('../package.json');
 const { createSelectMenu } = require('../utils/components');
+const { safeShowModal } = require('../utils/interactionHelper');
 
 const OWNER_ID = '1317480616048070656';
 const OWNER_MENTION = '<@' + OWNER_ID + '>';
@@ -148,7 +149,7 @@ module.exports = {
                 .setRequired(true)
             )
           );
-        await interaction.showModal(modal);
+        await safeShowModal(interaction, modal);
         return true;
       }
 
