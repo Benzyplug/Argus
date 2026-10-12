@@ -11,7 +11,7 @@ const { startHealthWriter, stopHealthWriter, markReady, markShuttingDown, writeS
 const { startMetricsServer, stopMetricsServer, commandDuration, commandErrors, ratelimitBlocks, discordEvents } = require('./utils/metrics');
 const { startHourlySweep, stopHourlySweep } = require('./utils/temp-sweep');
 const { pruneReports, startReportsSweep, stopReportsSweep } = require('./utils/reports');
-const { stylePayload, loadingEmbed, bannerEmbed, argusBannerFile } = require('./utils/embedBuilder');
+const { stylePayload, loadingEmbed, argusBannerFile } = require('./utils/embedBuilder');
 
 require('./utils/config');
 
@@ -66,7 +66,6 @@ function installResponseStyling(interaction) {
     const commandName = interaction.commandName || 'argus';
 
     interaction.deferReply = async (options = {}) => {
-        const banner = bannerEmbed({ interaction, client, commandName });
         const loading = loadingEmbed(interaction, commandName);
         const payload = { embeds: [loading] };
         const bannerFile = argusBannerFile();
