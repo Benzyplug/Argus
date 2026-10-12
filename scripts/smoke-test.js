@@ -14,7 +14,7 @@
  *
  * Usage:
  *   node scripts/smoke-test.js                # run all
- *   node scripts/smoke-test.js bob-dns bob-airport   # subset
+ *   node scripts/smoke-test.js dns airport   # subset
  *   TIMEOUT_MS=60000 node scripts/smoke-test.js
  */
 
@@ -41,36 +41,36 @@ const argFilter = process.argv.slice(2);
  *   needsBin:   optional list of binaries; if missing on PATH -> auto-skip
  */
 const SAMPLES = {
-    'bob-airport':       { options: { icao: 'KJFK' }, needsEnv: ['AIRPORTDB_API_KEY'] },
-    'bob-flight':        { options: { flight: 'AA100' }, needsEnv: ['AVIATIONSTACK_API_KEY'] },
-    'bob-blockchain':    { subcommand: 'address', options: { blockchain: 'eth', address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045' } },
-    'bob-blockchain-detect': { options: { address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045' } },
-    'bob-chat':          { skip: 'requires AI provider key + multi-step prompt; covered by manual QA' },
-    'bob-dns':           { options: { domain: 'example.com' }, needsEnv: ['DNSDUMPSTER_TOKEN'] },
-    'bob-dork':          { options: { firstname: 'John', lastname: 'Doe', engine: 'google' } },
-    'bob-exif':          { skip: 'attachment subcommand cannot be mocked' },
-    'bob-extract-links': { options: { url: 'https://example.com' } },
-    'bob-favicon':       { options: { url: 'https://example.com' } },
-    'bob-flight-number': { options: { flight: 'AA100' } },
-    'bob-generate-usernames': { options: { firstname: 'John', lastname: 'Doe' } },
-    'bob-ghunt':         { skip: 'requires ghunt binary', needsBin: ['ghunt'] },
-    'bob-health':        { options: { detailed: false } },
-    'bob-hostio':        { subcommand: 'domain', options: { domain: 'example.com' }, needsEnv: ['HOSTIO_API_KEY'] },
-    'bob-jwt':           { skip: 'requires jwt_tool binary + admin permissions', needsBin: ['jwt_tool'] },
-    'bob-linkook':       { skip: 'requires linkook binary', needsBin: ['linkook'] },
-    'bob-maigret':       { skip: 'requires maigret binary', needsBin: ['maigret'] },
-    'bob-monitor':       { skip: 'creates persistent setInterval; smoke test would leak handles' },
-    'bob-nike':          { options: { id: '12345' }, needsEnv: ['NIKE_TOKEN'] },
-    'bob-nuclei':        { skip: 'requires nuclei binary', needsBin: ['nuclei'] },
-    'bob-pappers':       { subcommand: 'search', options: { query: 'test' }, needsEnv: ['PAPPERS_API_KEY'] },
-    'bob-web-recon':     { options: { domain: 'example.com', service: 'crtsh' } },
-    'bob-redirect-check': { options: { url: 'https://google.com' } },
-    'bob-rekognition':   { skip: 'attachment subcommand cannot be mocked' },
-    'bob-sherlock':      { skip: 'requires sherlock binary', needsBin: ['sherlock'] },
-    'bob-vessel':        { subcommand: 'name', options: { query: 'titanic' } },
-    'bob-vpic':          { subcommand: 'decode', options: { vin: '1HGCM82633A004352' } },
-    'bob-whoxy':         { subcommand: 'domain', options: { domain: 'example.com' }, needsEnv: ['WHOXY_API_KEY'] },
-    'bob-xeuledoc':      { skip: 'requires xeuledoc binary', needsBin: ['xeuledoc'] }
+    'airport':       { options: { icao: 'KJFK' }, needsEnv: ['AIRPORTDB_API_KEY'] },
+    'flight':        { options: { flight: 'AA100' }, needsEnv: ['AVIATIONSTACK_API_KEY'] },
+    'blockchain':    { subcommand: 'address', options: { blockchain: 'eth', address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045' } },
+    'crypto-detect': { options: { address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045' } },
+    'ai':          { skip: 'requires AI provider key + multi-step prompt; covered by manual QA' },
+    'dns':           { options: { domain: 'example.com' }, needsEnv: ['DNSDUMPSTER_TOKEN'] },
+    'dork':          { options: { firstname: 'John', lastname: 'Doe', engine: 'google' } },
+    'exif':          { skip: 'attachment subcommand cannot be mocked' },
+    'extract-links': { options: { url: 'https://example.com' } },
+    'favicon':       { options: { url: 'https://example.com' } },
+    'flight-number': { options: { flight: 'AA100' } },
+    'username-gen': { options: { firstname: 'John', lastname: 'Doe' } },
+    'google-investigate':         { skip: 'requires ghunt binary', needsBin: ['ghunt'] },
+    'health':        { options: { detailed: false } },
+    'host-lookup':        { subcommand: 'domain', options: { domain: 'example.com' }, needsEnv: ['HOSTIO_API_KEY'] },
+    'jwt':           { skip: 'requires jwt_tool binary + admin permissions', needsBin: ['jwt_tool'] },
+    'link-check':       { skip: 'requires linkook binary', needsBin: ['linkook'] },
+    'maigret':       { skip: 'requires maigret binary', needsBin: ['maigret'] },
+    'monitor':       { skip: 'creates persistent setInterval; smoke test would leak handles' },
+    'nike':          { options: { id: '12345' }, needsEnv: ['NIKE_TOKEN'] },
+    'nuclei-scan':        { skip: 'requires nuclei binary', needsBin: ['nuclei'] },
+    'company-search':       { subcommand: 'search', options: { query: 'test' }, needsEnv: ['PAPPERS_API_KEY'] },
+    'web-recon':     { options: { domain: 'example.com', service: 'crtsh' } },
+    'redirect-check': { options: { url: 'https://google.com' } },
+    'image-ai':   { skip: 'attachment subcommand cannot be mocked' },
+    'sherlock':      { skip: 'requires sherlock binary', needsBin: ['sherlock'] },
+    'vessel':        { subcommand: 'name', options: { query: 'titanic' } },
+    'vehicle':          { subcommand: 'decode', options: { vin: '1HGCM82633A004352' } },
+    'whois':         { subcommand: 'domain', options: { domain: 'example.com' }, needsEnv: ['WHOXY_API_KEY'] },
+    'doc-meta':      { skip: 'requires xeuledoc binary', needsBin: ['xeuledoc'] }
 };
 
 function which(bin) {
