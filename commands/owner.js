@@ -19,8 +19,7 @@ module.exports = {
       .setDescription('**Owner & creator profile**\n\n' +
         '╭─ **Identity**\n' +
         '│ **Name:** ẞ€ÑZ¥\n' +
-        '│ **Username:** `Lmao_2.0`\n' +
-        '│ **Age:** 17\n' +
+        '        '│ **Age:** 17\n' +
         '│ **Countries:** 🇬🇧 UK • 🇳🇬 NG\n' +
         '╰────────────────────')
       .addFields(
@@ -30,7 +29,7 @@ module.exports = {
         { name: '◈ Development', value: 'Discord bots • OSINT • automation\nNode.js • JavaScript • APIs', inline: false },
         { name: '◈ Contact', value: `${OWNER_MENTION} • Message me for support or questions.`, inline: false }
       )
-      .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY Lmao_2.0' })
+      .setFooter({ text: '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥' })
       .setTimestamp();
 
     if (banner) embed.setImage(banner);
