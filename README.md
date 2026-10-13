@@ -10,19 +10,16 @@ Built and maintained by **ẞ€ÑZ¥**.
 
 Argus brings practical open-source intelligence tooling into Discord through slash commands.
 
-It is designed around:
+It is focused on:
 
 - 🌐 Web and domain reconnaissance
-- 🔎 Username and identity research
-- 📧 Email intelligence
-- 🛰️ Network and infrastructure analysis
-- 🚢 Aviation, airport, vehicle, and vessel lookups
-- 🖼️ Image and document metadata analysis
-- ⛓️ Blockchain investigation
+- 🕵️ Identity and username research
+- 🛰️ Transport intelligence
+- 🧬 File, metadata, and blockchain analysis
 - 🤖 AI-assisted analysis
 - 🛡️ Security and monitoring utilities
 
-Argus is modular, so integrations can be enabled or disabled without preventing the bot from starting.
+The command surface is intentionally focused. Unneeded teaching/learning scaffolding is not part of the active command guide.
 
 ---
 
@@ -43,7 +40,7 @@ npm install
 copy .env.example .env
 ```
 
-Configure the required values in `.env`:
+Configure:
 
 - `DISCORD_TOKEN`
 - `CLIENT_ID`
@@ -61,96 +58,68 @@ Start Argus:
 npm start
 ```
 
-For global command registration:
-
-```bash
-npm run deploy:global
-```
-
 ---
 
 ## ⌘ Command Surface
 
-Argus currently contains **42 command modules**. Some modules expose a different slash-command name or group multiple operations under one command.
+Argus uses an interactive `/help` command with category filtering and command search.
 
-### Core
+### 🎖 Rankings
 
-- `/help` — Interactive command center
-- `/bot` — Bot information
-- `/owner` — Project/owner information
-- `/health` — Runtime and integration health
+- `/bot`
 
-### Web & Recon
+### 🌐 Web Intelligence
 
-- `/dns` — DNS and domain intelligence
-- `/dork` — Search-engine dork generation
-- `/host-lookup` — Host.io intelligence
-- `/web-recon` — Web reconnaissance
-- `/link-check` — URL/link analysis
-- `/redirect-check` — Redirect-chain inspection
-- `/extract-links` — Extract links from a webpage
-- `/favicon` — Favicon intelligence
-- `/subdomain-enum` — Subdomain enumeration
-- `/cert-search` — Certificate/CT-log search
-- `/wayback-history` — Wayback history
-- `/web-tech` — Web technology detection
-- `/ip-info` — IP information
-- `/ip-reputation` — IP reputation
-- `/shodan-lookup` — Shodan lookup
-- `/whoxy` — WHOIS/domain intelligence
+- `/dns`
+- `/dork`
+- `/extract-links`
+- `/favicon`
+- `/host-lookup`
+- `/link-check`
+- `/redirect-check`
+- `/web-recon`
+- `/whois`
 
-### Identity & OSINT
+### 🕵️ OSINT & Identity
 
-- `/company-search` — Company intelligence
-- `/email-footprint` — Email footprint analysis
-- `/email-breach` — Email breach intelligence
-- `/maigret` — Username investigation
-- `/sherlock` — Username investigation across supported platforms
-- `/google-investigate` — Google/GHunt investigation
-- `/username-gen` — Username generation
-- `/nike` — Nike investigation workflow
-- `/avatar-search` — Avatar/image search
+- `/company-search`
+- `/google-investigate`
+- `/maigret`
+- `/nike`
+- `/sherlock`
+- `/username-gen`
 
-### Transport
+### 🛰️ Transport
 
-- `/airport` — Airport intelligence
-- `/flight` — Flight and aviation intelligence
-- `/vehicle` — Vehicle/VIN intelligence
-- `/vessel` — Maritime and vessel intelligence
+- `/airport`
+- `/flight`
+- `/vehicle`
+- `/vessel`
 
-Transport functionality is consolidated under the relevant commands rather than creating unnecessary top-level vehicle or flight commands.
+### 🧬 Files & Data
 
-### Files & Data
+- `/blockchain`
+- `/crypto-detect`
+- `/doc-meta`
+- `/exif`
+- `/upload`
 
-- `/exif` — Image metadata extraction
-- `/doc-meta` — Document metadata
-- `/upload` — Asset upload
-- `/blockchain` — Blockchain/address investigation
-- `/crypto-detect` — Cryptocurrency address detection
+### 🤖 AI & Utilities
 
-### AI & Security
+- `/ai`
+- `/health`
+- `/image-ai`
+- `/jwt`
+- `/monitor`
+- `/nuclei-scan`
 
-- `/ai` — AI-assisted analysis and utilities
-- `/jwt` — JWT analysis
-- `/monitor` — Monitoring and alert workflows
-- `/nuclei-scan` — Nuclei-based security scanning
-- `/image-ai` — Image analysis with supported AI services
-
-> Temporary learning, teaching, progression, and duplicate command scaffolding has been removed. The command surface is intentionally kept focused.
+`/help` also provides a category dropdown and a **Find a command…** modal.
 
 ---
 
 ## 🤖 AI
 
-The `/ai` command provides AI-assisted workflows such as:
-
-- General assistance
-- Coding
-- Structured analysis
-- Transcription
-- Conversation reset
-
-Available AI capabilities depend on the configured provider.
+The `/ai` command provides AI-assisted workflows. Available capabilities depend on the configured provider.
 
 ---
 
@@ -196,22 +165,13 @@ Argus is intended for legitimate OSINT research, authorized security testing, in
 
 Users are responsible for complying with applicable laws, platform rules, and authorization requirements.
 
-The project includes protections such as:
-
-- Input validation
-- Permission checks
-- Rate limiting
-- SSRF protections
-- Controlled external-process execution
-- Secret redaction in logs
-
 See [SECURITY.md](SECURITY.md) for the project's security model.
 
 ---
 
 ## 🧪 Development
 
-Run the available development checks with:
+Run:
 
 ```bash
 npm test
@@ -220,13 +180,13 @@ npm run smoke
 npm run dev
 ```
 
-After changing commands, register them again:
+After changing commands:
 
 ```bash
 npm run deploy
 ```
 
-For a clean guild command registration:
+For a clean guild registration:
 
 ```bash
 npm run clear
@@ -239,7 +199,7 @@ npm run deploy
 
 Argus is designed to run as a persistent Discord bot process.
 
-Typical Node.js deployment settings:
+Typical settings:
 
 - **Runtime:** Node.js 20+
 - **Install:** `npm install`
