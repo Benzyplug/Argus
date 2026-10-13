@@ -420,6 +420,30 @@ async function startArgus() {
     // Register the complete command schemas once. No metadata-only registration.
     await syncApplicationCommands(commandPayload, 'full-modules');
 
+    // Keep global application commands in sync too so retired commands do not
+    // survive in Discord as stale/duplicate slash commands.
+    try {
+        const globalEndpoint = 'https://discord.com/api/v10/applications/' + process.env.CLIENT_ID + '/commands';
+        const globalResponse = await fetch(globalEndpoint, {
+            method: 'PUT',
+            headers: {
+                Authorization: 'Bot ' + process.env.DISCORD_TOKEN,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(commandPayload)
+        });
+        const globalText = await globalResponse.text();
+        if (!globalResponse.ok) {
+            console.warn('[ARGUS] GLOBAL COMMAND CLEANUP FAILED:', globalText);
+        } else {
+            let globalCommands = [];
+            try { globalCommands = JSON.parse(globalText); } catch {}
+            console.log('[ARGUS] GLOBAL COMMANDS SYNCHRONIZED — count=' + (Array.isArray(globalCommands) ? globalCommands.length : 0));
+        }
+    } catch (err) {
+        console.warn('[ARGUS] GLOBAL COMMAND SYNC SKIPPED:', err?.message || err);
+    }
+
     console.log('[ARGUS] FULL COMMAND REGISTRATION COMPLETE — all slash-command options are deployed');
 
     // Gateway startup is independent from REST command registration.
