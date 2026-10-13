@@ -35,6 +35,7 @@ function installArgusResponses(interaction, client) {
     const loading = loadingEmbed(interaction, commandName);
     const payload = { embeds: [loading] };
     if (options.ephemeral !== undefined) payload.ephemeral = options.ephemeral;
+    else payload.flags = MessageFlags.Ephemeral;
     if (options.flags !== undefined) payload.flags = options.flags;
     return originalReply(payload);
   };
@@ -49,12 +50,16 @@ function installArgusResponses(interaction, client) {
     }
     if (interaction.replied) {
       const styledFollow = raw ? cleanOptions : stylePayload(cleanOptions, context);
-      const response = await originalFollowUp({ ...styledFollow, ...(styledFollow.components?.length ? { fetchReply: true } : {}) });
+      const followOptions = { ...styledFollow, ...(styledFollow.components?.length ? { fetchReply: true } : {}) };
+      if (followOptions.ephemeral === undefined && followOptions.flags === undefined) followOptions.flags = MessageFlags.Ephemeral;
+      const response = await originalFollowUp(followOptions);
       rememberComponentOwner(response, interaction.user?.id);
       return response;
     }
     const styled = raw ? cleanOptions : stylePayload(cleanOptions, context);
-    const response = await originalReply({ ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) });
+    const replyOptions = { ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) };
+    if (replyOptions.ephemeral === undefined && replyOptions.flags === undefined) replyOptions.flags = MessageFlags.Ephemeral;
+    const response = await originalReply(replyOptions);
     rememberComponentOwner(response, interaction.user?.id);
     return response;
   };
@@ -67,7 +72,9 @@ function installArgusResponses(interaction, client) {
 
   interaction.followUp = async (options = {}) => {
     const styled = stylePayload(options, context);
-    const response = await originalFollowUp({ ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) });
+    const followOptions = { ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) };
+    if (followOptions.ephemeral === undefined && followOptions.flags === undefined) followOptions.flags = MessageFlags.Ephemeral;
+    const response = await originalFollowUp(followOptions);
     rememberComponentOwner(response, interaction.user?.id);
     return response;
   };
