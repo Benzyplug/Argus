@@ -43,7 +43,7 @@ const GROUPS = [
     key: 'transport',
     title: '🛰️ Transport',
     description: 'Airport, flight, vehicle and vessel intelligence',
-    names: ['airport', 'flight', 'vehicle', 'vessel']
+    names: ['airport', 'flight', 'flight-number', 'vehicle', 'vessel']
   },
   {
     key: 'files',
