@@ -12,6 +12,15 @@ const HEALTH_DIR_NAME = '.health';
 const SWEEP_EXCLUDE_DEFAULT = Object.freeze([HEALTH_DIR_NAME]);
 const TEMP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
+const ACTIVE_COMMAND_NAMES = new Set([
+    'bot',
+    'dns', 'dork', 'extract-links', 'favicon', 'host-lookup', 'link-check', 'redirect-check', 'web-recon', 'whois',
+    'company-search', 'google-investigate', 'maigret', 'nike', 'sherlock', 'username-gen',
+    'airport', 'flight', 'vehicle', 'vessel',
+    'blockchain', 'crypto-detect', 'doc-meta', 'exif', 'upload',
+    'ai', 'health', 'image-ai', 'jwt', 'monitor', 'nuclei-scan'
+]);
+
 const COMMAND_METADATA = Object.freeze({
     'airport.js': { name: 'airport', description: 'Look up an airport by code or name.' },
     'aviation.js': { name: 'flight', description: 'Track a flight and view current aviation details.' },
@@ -79,6 +88,14 @@ function loadCommands(commandsPath) {
             const json = typeof command.data.toJSON === 'function' ? command.data.toJSON() : command.data;
             if (!json.name || !json.description) {
                 throw new Error('Command data is missing name or description');
+            }
+
+            // Keep the public slash-command surface intentionally focused. Files can remain
+            // in the repository for later reintroduction without being registered in Discord.
+            if (!ACTIVE_COMMAND_NAMES.has(json.name)) {
+                stats.skipped++;
+                console.log(`[ARGUS COMMAND LOAD] Skipped inactive command /${json.name}`);
+                continue;
             }
 
             if (commands.has(json.name)) {
