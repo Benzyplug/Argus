@@ -24,7 +24,8 @@
  * Usage: /sherlock username:john_doe verbose:true timeout:300
  */
 
-const { SlashCommandBuilder, AttachmentBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, AttachmentBuilder, MessageFlags, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { safeShowModal } = require('../utils/interactionHelper');
 const { safeSpawnToFile, getSafeEnv } = require('../utils/process');
 const fs = require('fs').promises;
 const path = require('path');
@@ -61,7 +62,7 @@ module.exports = {
      * Execute the Sherlock username search command
      * @param {CommandInteraction} interaction - Discord interaction object
      */
-    async execute(interaction) {
+    async run(interaction) {
         await interaction.deferReply();
         
         // Get and validate command options
@@ -118,6 +119,79 @@ module.exports = {
             await cleanupOutputFile(outputFile);
         }
     },
+    
+    async execute(interaction) {
+        return safeShowModal(interaction, new ModalBuilder()
+            .setCustomId('argus:sherlock:modal')
+            .setTitle('sherlock')
+            .addComponents(
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('username')
+                        .setLabel('Username')
+                        .setPlaceholder('john_doe')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true)
+                ),
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('verbose')
+                        .setLabel('Verbose')
+                        .setPlaceholder('false')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false)
+                ),
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('timeout')
+                        .setLabel('Timeout seconds')
+                        .setPlaceholder('300')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false)
+                ),
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('include-nsfw')
+                        .setLabel('Include NSFW')
+                        .setPlaceholder('false')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false)
+                )
+            ));
+    },
+
+    async handleInteraction(interaction) {
+        if (interaction.isModalSubmit() && interaction.customId === 'argus:sherlock:modal') {
+            const values = interaction.fields;
+            const options = {
+                getString: (name) => {
+                    const value = values.getTextInputValue(name);
+                    if (name === 'verbose' || name === 'include-nsfw') return value === 'true';
+                    return value || null;
+                },
+                getBoolean: (name) => {
+                    const value = values.getTextInputValue(name);
+                    return value === undefined || value === '' ? null : value === 'true';
+                },
+                getInteger: (name) => {
+                    const value = values.getTextInputValue(name);
+                    const parsed = Number.parseInt(value, 10);
+                    return Number.isFinite(parsed) ? parsed : null;
+                },
+                getSubcommand: () => null
+            };
+            const modalInteraction = new Proxy(interaction, {
+                get(target, prop) {
+                    if (prop === 'options') return options;
+                    const value = Reflect.get(target, prop, target);
+                    return typeof value === 'function' ? value.bind(target) : value;
+                }
+            });
+            await this.run(modalInteraction);
+            return true;
+        }
+        return false;
+    }
 };
 
 /**
