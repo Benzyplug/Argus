@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, version: discordJsVersion } = require('discord.js');
 const pkg = require('../package.json');
 const { gatherHealthData, formatUptime } = require('../utils/health');
 const { createArgusEmbed } = require('../utils/embedBuilder');
@@ -20,7 +20,7 @@ module.exports = {
     const statusEmoji = { healthy: '🟢', degraded: '🟡', unhealthy: '🔴' }[health.overall.status] || '⚪';
     const mem = health.system.memory.used;
     const fields = [
-      { name: '◈ Runtime', value: 'Node.js **' + process.version + '**\ndiscord.js **v14.27.0**\nUptime **' + formatUptime(process.uptime()) + '**', inline: true },
+      { name: '◈ Runtime', value: 'Node.js **' + process.version + '**\ndiscord.js **v' + discordJsVersion + '**\nUptime **' + formatUptime(process.uptime()) + '**', inline: true },
       { name: '◈ Bot', value: 'Servers **' + interaction.client.guilds.cache.size + '**\nCommands **' + (interaction.client.commands?.size ?? 0) + '**\nStatus **' + (health.discord.connected ? '🟢 Connected' : '🔴 Disconnected') + '**\nPing **' + (health.discord.ping == null ? 'N/A' : health.discord.ping + 'ms') + '**', inline: true },
       { name: '◈ Health', value: statusEmoji + ' **' + health.overall.status.toUpperCase() + '** (' + health.overall.score + '/100)\n' + (health.overall.issues.length ? '⚠️ ' + health.overall.issues.slice(0, 6).join(', ') : '✅ No issues detected'), inline: true },
       { name: '◈ System', value: '**Platform:** ' + health.system.platform + ' ' + health.system.arch + '\n**Memory:** ' + Math.round(mem.heapUsed / 1048576) + 'MB / ' + Math.round(mem.heapTotal / 1048576) + 'MB\n**Uptime:** ' + formatUptime(health.system.uptime), inline: true },
