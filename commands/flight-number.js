@@ -7,7 +7,8 @@
  * for various flight tracking services to help users monitor flights.
  */
 
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { safeShowModal } = require('../utils/interactionHelper');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -18,7 +19,7 @@ module.exports = {
                 .setDescription('The flight number (e.g. BA234, DL1234)')
                 .setRequired(true)),
                 
-    async execute(interaction) {
+    async run(interaction) {
         try {
             const flightNumber = interaction.options.getString('flight');
             
@@ -58,6 +59,55 @@ module.exports = {
             });
         }
     },
+    
+    async execute(interaction) {
+        return safeShowModal(interaction, new ModalBuilder()
+            .setCustomId('argus:flight-number:modal')
+            .setTitle('flight number')
+            .addComponents(
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('flight')
+                        .setLabel('Flight number')
+                        .setPlaceholder('BA234')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true)
+                )
+            ));
+    },
+
+    async handleInteraction(interaction) {
+        if (interaction.isModalSubmit() && interaction.customId === 'argus:flight-number:modal') {
+            const values = interaction.fields;
+            const options = {
+                getString: (name) => {
+                    const value = values.getTextInputValue(name);
+                    if (name === 'verbose' || name === 'include-nsfw') return value === 'true';
+                    return value || null;
+                },
+                getBoolean: (name) => {
+                    const value = values.getTextInputValue(name);
+                    return value === undefined || value === '' ? null : value === 'true';
+                },
+                getInteger: (name) => {
+                    const value = values.getTextInputValue(name);
+                    const parsed = Number.parseInt(value, 10);
+                    return Number.isFinite(parsed) ? parsed : null;
+                },
+                getSubcommand: () => null
+            };
+            const modalInteraction = new Proxy(interaction, {
+                get(target, prop) {
+                    if (prop === 'options') return options;
+                    const value = Reflect.get(target, prop, target);
+                    return typeof value === 'function' ? value.bind(target) : value;
+                }
+            });
+            await this.run(modalInteraction);
+            return true;
+        }
+        return false;
+    }
 };
 
 /**
