@@ -26,12 +26,24 @@
 
 const { SlashCommandBuilder, AttachmentBuilder, MessageFlags, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { safeShowModal } = require('../utils/interactionHelper');
+const { createSelectMenu } = require('../utils/components');
 const { safeSpawnToFile, getSafeEnv } = require('../utils/process');
 const fs = require('fs').promises;
 const path = require('path');
 const { isValidUsername, sanitizeInput, isValidUrl } = require('../utils/validation');
 const { reportFilePath, cleanupFile } = require('../utils/temp');
 const { archiveReport } = require('../utils/reports');
+
+function buildActionMenu() {
+    return createSelectMenu(
+        'argus:sherlock:actions',
+        'sherlock actions',
+        [
+            { label: 'Run again', value: 'again', description: 'Open the investigation form again', emoji: '🔎' },
+            { label: 'View Argus help', value: 'help', description: 'Browse available Argus operations', emoji: '🧿' }
+        ]
+    );
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -161,6 +173,24 @@ module.exports = {
     },
 
     async handleInteraction(interaction) {
+        if (interaction.isStringSelectMenu() && interaction.customId === 'argus:sherlock:actions') {
+            if (interaction.values[0] === 'help') {
+                await interaction.reply({ content: 'Use \`/help\` to browse the Argus command center.', ephemeral: true });
+                return true;
+            }
+            if (interaction.values[0] === 'again') {
+                return safeShowModal(interaction, new ModalBuilder()
+                    .setCustomId('argus:sherlock:modal')
+                    .setTitle('sherlock')
+                    .addComponents(
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('username').setLabel('Username').setPlaceholder('john_doe').setStyle(TextInputStyle.Short).setRequired(true)),
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('verbose').setLabel('Verbose (true/false)').setPlaceholder('false').setStyle(TextInputStyle.Short).setRequired(false)),
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('timeout').setLabel('Timeout seconds').setPlaceholder('300').setStyle(TextInputStyle.Short).setRequired(false)),
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('include-nsfw').setLabel('Include NSFW (true/false)').setPlaceholder('false').setStyle(TextInputStyle.Short).setRequired(false))
+                    ));
+            }
+        }
+
         if (interaction.isModalSubmit() && interaction.customId === 'argus:sherlock:modal') {
             const values = interaction.fields;
             const options = {
@@ -188,6 +218,7 @@ module.exports = {
                 }
             });
             await this.run(modalInteraction);
+            await interaction.editReply({ components: [buildActionMenu()] });
             return true;
         }
         return false;
