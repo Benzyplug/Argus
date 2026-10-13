@@ -124,7 +124,7 @@ function styleEmbed(input, context = {}) {
   if (!fields.some(f => /(?:🕒|⏱️)\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
   if (isError && fields.length < 25) fields.push({ name: '🆘 Support', value: process.env.SUPPORT_URL || 'https://github.com/Benzyplug/Argus/issues', inline: false });
   embed.setFields(fields.slice(0, 25));
-  embed.setFooter({ text: ARGUS_FOOTER() });
+  if (!json.footer?.text) embed.setFooter({ text: ARGUS_FOOTER() });
   return embed;
 }
 
@@ -161,7 +161,7 @@ function stylePayload(payload, context = {}) {
     const embeds = result.embeds || [];
     if (embeds.length) {
       const first = embeds[0] instanceof EmbedBuilder ? embeds[0] : new EmbedBuilder(embeds[0]);
-      first.setImage('attachment://banner.png');
+      if (!first.data.image?.url) first.setImage('attachment://banner.png');
       result.embeds = [first, ...embeds.slice(1)];
     }
     result.files = [bannerFile, ...(result.files || [])];
