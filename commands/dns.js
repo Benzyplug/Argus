@@ -16,7 +16,8 @@
  * Usage: /dns domain:example.com
  */
 
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { safeShowModal } = require('../utils/interactionHelper');
 const axios = require('axios');
 const { getSafeAxiosConfig } = require('../utils/ssrf');
 const { isValidDomain, sanitizeInput } = require('../utils/validation');
@@ -35,7 +36,7 @@ module.exports = {
      * Execute the DNS lookup command
      * @param {CommandInteraction} interaction - Discord interaction object
      */
-    async execute(interaction) {
+    async run(interaction) {
         // Defer reply to handle longer processing times
         await interaction.deferReply();
 
@@ -170,6 +171,55 @@ module.exports = {
             });
         }
     },
+    
+    async execute(interaction) {
+        return safeShowModal(interaction, new ModalBuilder()
+            .setCustomId('argus:dns:modal')
+            .setTitle('dns')
+            .addComponents(
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('domain')
+                        .setLabel('Domain')
+                        .setPlaceholder('example.com')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true)
+                )
+            ));
+    },
+
+    async handleInteraction(interaction) {
+        if (interaction.isModalSubmit() && interaction.customId === 'argus:dns:modal') {
+            const values = interaction.fields;
+            const options = {
+                getString: (name) => {
+                    const value = values.getTextInputValue(name);
+                    if (name === 'verbose' || name === 'include-nsfw') return value === 'true';
+                    return value || null;
+                },
+                getBoolean: (name) => {
+                    const value = values.getTextInputValue(name);
+                    return value === undefined || value === '' ? null : value === 'true';
+                },
+                getInteger: (name) => {
+                    const value = values.getTextInputValue(name);
+                    const parsed = Number.parseInt(value, 10);
+                    return Number.isFinite(parsed) ? parsed : null;
+                },
+                getSubcommand: () => null
+            };
+            const modalInteraction = new Proxy(interaction, {
+                get(target, prop) {
+                    if (prop === 'options') return options;
+                    const value = Reflect.get(target, prop, target);
+                    return typeof value === 'function' ? value.bind(target) : value;
+                }
+            });
+            await this.run(modalInteraction);
+            return true;
+        }
+        return false;
+    }
 };
 
 /**
