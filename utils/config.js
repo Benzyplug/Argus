@@ -13,6 +13,7 @@ const REQUIRED = {
 
 const OPTIONAL = {
     MONITOR_CHANNEL_ID: { desc: 'Channel ID for monitor alerts', default: null },
+    ARGUS_LOG_CHANNEL_ID: { desc: 'Private channel ID for command audit logs', default: null },
     SHERLOCK_PATH: { desc: 'Path to sherlock binary', default: 'sherlock' },
     MAIGRET_PATH: { desc: 'Path to maigret binary', default: 'maigret' },
     NUCLEI_PATH: { desc: 'Path to nuclei binary', default: 'nuclei' },
