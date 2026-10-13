@@ -16,29 +16,48 @@ const pkg = require('../package.json');
 const { createSelectMenu } = require('../utils/components');
 const { safeShowModal } = require('../utils/interactionHelper');
 
-const OWNER_ID = '1317480616048070656';
 const HELP_MENU_ID = 'argus:help:category';
 const HELP_HOME_ID = 'argus:help:home';
 const HELP_SEARCH_ID = 'argus:help:search';
 const HELP_MODAL_ID = 'argus:help:search:modal';
 const HELP_MODAL_INPUT_ID = 'argus:help:search:query';
-const HELP_TIMEOUT_MS = 5 * 60 * 1000;
 
 const BANNER_PATH = path.join(__dirname, '..', 'banner.png');
 const BANNER_NAME = 'banner.png';
 
 const GROUPS = [
-  { key: 'rankings', title: '🎖 Rankings', description: 'Bot information and rankings', names: ['bot'] },
-  { key: 'web', title: '🌐 Web Intelligence', description: 'Domains, hosts, links and web reconnaissance', names: ['dns', 'dork', 'extract-links', 'favicon', 'host-lookup', 'link-check', 'redirect-check', 'web-recon', 'whois', 'subdomain-enum', 'cert-search', 'ip-info', 'shodan-lookup', 'ip-reputation', 'wayback-history', 'web-tech'] },
-  { key: 'identity', title: '🕵️ OSINT & Identity', description: 'Identity, usernames and company intelligence', names: ['company-search', 'email-footprint', 'email-breach', 'avatar-search', 'maigret', 'sherlock', 'username-gen'] },
-  { key: 'transport', title: '🛰️ Transport', description: 'Airport, flight, vehicle and vessel intelligence', names: ['airport', 'flight', 'vehicle', 'vessel'] },
-  { key: 'files', title: '🧬 Files & Data', description: 'Files, metadata and blockchain analysis', names: ['blockchain', 'crypto-detect', 'doc-meta', 'exif', 'upload'] },
-  { key: 'utilities', title: '🤖 AI & Utilities', description: 'AI, monitoring and security utilities', names: ['ai', 'health', 'image-ai', 'jwt', 'monitor', 'nuclei-scan'] }
+  { key: 'rankings', title: '🎖 Rankings', description: 'Core Argus information', names: ['bot'] },
+  {
+    key: 'web',
+    title: '🌐 Web Intelligence',
+    description: 'Web, domain, URL and reconnaissance operations',
+    names: ['dns', 'dork', 'extract-links', 'favicon', 'host-lookup', 'link-check', 'redirect-check', 'web-recon', 'whois']
+  },
+  {
+    key: 'identity',
+    title: '🕵️ OSINT & Identity',
+    description: 'Identity and public-data investigation',
+    names: ['company-search', 'google-investigate', 'maigret', 'nike', 'sherlock', 'username-gen']
+  },
+  {
+    key: 'transport',
+    title: '🛰️ Transport',
+    description: 'Airport, flight, vehicle and vessel intelligence',
+    names: ['airport', 'flight', 'vehicle', 'vessel']
+  },
+  {
+    key: 'files',
+    title: '🧬 Files & Data',
+    description: 'Blockchain, metadata and file analysis',
+    names: ['blockchain', 'crypto-detect', 'doc-meta', 'exif', 'upload']
+  },
+  {
+    key: 'utilities',
+    title: '🤖 AI & Utilities',
+    description: 'AI, monitoring and security utilities',
+    names: ['ai', 'health', 'image-ai', 'jwt', 'monitor', 'nuclei-scan']
+  }
 ];
-
-function cleanCategoryTitle(title) {
-  return title.replace(/^\S+\s+/, '');
-}
 
 function availableCommands(client) {
   return new Map(
@@ -51,32 +70,46 @@ function availableCommands(client) {
 }
 
 function buildFooter() {
-  return '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥';
+  return '⌬ ARGUS • v' + pkg.version + ' • BY ẞ€ÑZ¥';
 }
 
 function attachBanner(embed) {
-  if (fs.existsSync(BANNER_PATH)) embed.setImage('attachment://' + BANNER_NAME);
+  if (fs.existsSync(BANNER_PATH)) {
+    embed.setImage('attachment://' + BANNER_NAME);
+  }
   return embed;
 }
 
 function buildMainEmbed(client) {
+  const lines = GROUPS.map(group => {
+    const available = availableCommands(client);
+    const commands = group.names
+      .map(name => available.get(name))
+      .filter(Boolean)
+      .map(command => (command.restricted ? '🔒 ' : '') + '› `/' + command.name + '`')
+      .join('  •  ');
+
+    return '**' + group.title + '**\n' + (commands || 'No commands currently registered.');
+  });
+
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
     .setAuthor({
       name: 'ARGUS • Open Source Intelligence',
       iconURL: client.user?.displayAvatarURL?.({ extension: 'png', size: 128 })
     })
-    .setTitle('Command Center')
+    .setTitle('Command Guide')
     .setDescription(
-      'A focused OSINT toolkit for reconnaissance, investigation, and analysis.\\n\\n' +
-      '**Getting Started**\\n' +
-      'Select a category below to explore Argus operations. Use **Find a command** when you already know what you are looking for.\\n\\n' +
-      '**How It Works**\\n' +
-      '• Pick a category\\n' +
-      '• Choose an operation\\n' +
-      '• Run the command and follow the result'
+      'Here is the list of available Argus commands.\n\n' +
+      '**For more info**\n' +
+      'Choose a category below to browse its operations, or use **Find a command…** to search by name or keyword.\n\n' +
+      '**Need more help?**\n' +
+      'Contact <@1317480616048070656> if you need help.\n\n' +
+      lines.join('\n\n')
     )
+    .setTimestamp()
     .setFooter({ text: buildFooter() });
+
   return attachBanner(embed);
 }
 
@@ -94,31 +127,26 @@ function buildCategoryEmbed(client, key) {
       iconURL: client.user?.displayAvatarURL?.({ extension: 'png', size: 128 })
     })
     .setTitle(group.title)
-    .setDescription(group.description + '\\n\\nSelect another category below to switch sections.');
-
+    .setDescription(group.description + '\n\nChoose an operation from this section.');
+  
   if (items.length) {
-    const lines = items.map(command => {
-      const lock = command.restricted ? '🔒 ' : '';
-      return lock + '`/' + command.name + '` — ' + command.description;
+    embed.addFields({
+      name: 'Available operations',
+      value: items
+        .map(command => (command.restricted ? '🔒 ' : '') + '› `/' + command.name + '` — ' + command.description)
+        .join('\n')
     });
-    for (let i = 0; i < lines.length; i += 12) {
-      embed.addFields({
-        name: lines.length > 12 ? 'Operations ' + (Math.floor(i / 12) + 1) : 'Operations',
-        value: lines.slice(i, i + 12).join('\\n'),
-        inline: false
-      });
-    }
   } else {
-    embed.addFields({ name: 'Operations', value: 'No commands are currently registered in this category.' });
+    embed.addFields({ name: 'Available operations', value: 'No commands currently registered in this category.' });
   }
 
-  embed.setFooter({ text: buildFooter() });
+  embed.setTimestamp().setFooter({ text: buildFooter() });
   return attachBanner(embed);
 }
 
 function buildSearchEmbed(client, query) {
   const available = availableCommands(client);
-  const clean = String(query || '').trim().replace(/^\\//, '').toLowerCase();
+  const clean = String(query || '').trim().replace(/^\//, '').toLowerCase();
 
   const matches = [...available.values()]
     .filter(command =>
@@ -146,12 +174,12 @@ function buildSearchEmbed(client, query) {
       name: 'Matches',
       value: matches.map(command => {
         const lock = command.restricted ? '🔒 ' : '';
-        return lock + '`/' + command.name + '` — ' + command.description;
-      }).join('\\n')
+        return lock + '› `/' + command.name + '` — ' + command.description;
+      }).join('\n')
     });
   }
 
-  embed.setFooter({ text: buildFooter() });
+  embed.setTimestamp().setFooter({ text: buildFooter() });
   return attachBanner(embed);
 }
 
@@ -165,7 +193,7 @@ function buildComponents(selectedKey = null) {
       default: !selectedKey
     },
     ...GROUPS.map(group => ({
-      label: cleanCategoryTitle(group.title),
+      label: group.title.replace(/^\S+\s+/, ''),
       value: group.key,
       description: group.description.slice(0, 100),
       default: selectedKey === group.key
@@ -183,6 +211,7 @@ function buildComponents(selectedKey = null) {
 
 function buildButtons(showHome = false) {
   const buttons = [];
+
   if (showHome) {
     buttons.push(
       new ButtonBuilder()
@@ -192,6 +221,7 @@ function buildButtons(showHome = false) {
         .setStyle(ButtonStyle.Secondary)
     );
   }
+
   buttons.push(
     new ButtonBuilder()
       .setCustomId(HELP_SEARCH_ID)
@@ -203,11 +233,13 @@ function buildButtons(showHome = false) {
       .setURL('https://github.com/Benzyplug/Argus/issues')
       .setStyle(ButtonStyle.Link)
   );
+
   return [new ActionRowBuilder().addComponents(buttons)];
 }
 
 function buildPayload(client, selectedKey = null) {
   const main = !selectedKey;
+
   return {
     embeds: [main ? buildMainEmbed(client) : buildCategoryEmbed(client, selectedKey)],
     components: [...buildComponents(selectedKey), ...buildButtons(!main)],
@@ -218,32 +250,7 @@ function buildPayload(client, selectedKey = null) {
 }
 
 function buildAllPayload(client) {
-  const available = availableCommands(client);
-  const groups = GROUPS.map(group => {
-    const items = group.names.map(name => available.get(name)).filter(Boolean);
-    return '**' + group.title + '**\\n' + (items.length
-      ? items.map(c => (c.restricted ? '🔒 ' : '') + '`/' + c.name + '`').join('  •  ')
-      : 'No commands');
-  });
-
-  const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setAuthor({
-      name: 'ARGUS • Open Source Intelligence',
-      iconURL: client.user?.displayAvatarURL?.({ extension: 'png', size: 128 })
-    })
-    .setTitle('All Operations')
-    .setDescription(groups.join('\\n\\n'))
-    .setFooter({ text: buildFooter() });
-
-  attachBanner(embed);
-  return {
-    embeds: [embed],
-    components: buildComponents('all'),
-    allowedMentions: { parse: [] },
-    files: fs.existsSync(BANNER_PATH) ? [{ attachment: BANNER_PATH, name: BANNER_NAME }] : [],
-    __argusRaw: true
-  };
+  return buildPayload(client);
 }
 
 module.exports = {
@@ -274,6 +281,7 @@ module.exports = {
                 .setRequired(true)
             )
           );
+
         await safeShowModal(interaction, modal);
         return true;
       }
@@ -303,6 +311,7 @@ module.exports = {
               .setRequired(true)
           )
         );
+
       await safeShowModal(interaction, modal);
       return true;
     }
@@ -317,6 +326,7 @@ module.exports = {
       const payload = buildPayload(interaction.client);
       payload.embeds = [buildSearchEmbed(interaction.client, query)];
       payload.components = [...buildComponents(null), ...buildButtons(false)];
+
       await interaction.reply({
         ...payload,
         flags: MessageFlags.Ephemeral,
