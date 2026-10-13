@@ -1,4 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const fs = require('node:fs');
+const path = require('node:path');
+const BANNER_PATH = path.join(__dirname, '..', 'banner.png');
 const pkg = require('../package.json');
 const { RESTRICTED_COMMANDS } = require('../utils/permissions');
 const { createSelectMenu } = require('../utils/components');
@@ -47,6 +50,7 @@ function base(client) {
   });
 }
 function finish(embed) {
+  if (fs.existsSync(BANNER_PATH)) embed.setImage('attachment://banner.png');
   return embed.setFooter({text:'⌬ ARGUS • v'+pkg.version+' • BY ẞ€ÑZ¥'});
 }
 function home(client) {
@@ -84,7 +88,7 @@ function buttons(back=false) {
   return [new ActionRowBuilder().addComponents(list)];
 }
 function payload(client,key=null) {
-  return {embeds:[key?category(client,key):home(client)],components:[...components(client,key),...buttons(Boolean(key))],allowedMentions:{parse:[]}};
+  return {embeds:[key?category(client,key):home(client)],components:[...components(client,key),...buttons(Boolean(key))],allowedMentions:{parse:[]},files:fs.existsSync(BANNER_PATH)?[{attachment:BANNER_PATH,name:'banner.png'}]:[]};
 }
 function modal() {
   return new ModalBuilder().setCustomId(MODAL).setTitle('Find an Argus command').addComponents(new ActionRowBuilder().addComponents(
