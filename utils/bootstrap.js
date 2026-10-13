@@ -31,7 +31,6 @@ const COMMAND_METADATA = Object.freeze({
     'flight-number.js': { name: 'flight-number', description: 'Look up information for a flight number.' },
     'generate-usernames.js': { name: 'username-gen', description: 'Generate username ideas from a name or keyword.' },
     'ghunt.js': { name: 'google-investigate', description: 'Investigate a Google account with available OSINT data.' },
-    'health.js': { name: 'health', description: 'Check Argus health and system status.' },
     'help.js': { name: 'help', description: 'Show all Argus commands and what they do.' },
     'hostio.js': { name: 'host-lookup', description: 'Look up hosting and infrastructure information.' },
     'jwt.js': { name: 'jwt', description: 'Inspect and analyze a JSON Web Token.' },
