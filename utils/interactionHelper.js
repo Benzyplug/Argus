@@ -2,6 +2,16 @@ const { MessageFlags } = require('discord.js');
 const { isInteractionValid, safeShowModal: validatedShowModal } = require('./interactionValidator');
 const { stylePayload, loadingEmbed, argusBannerFile } = require('./embedBuilder');
 
+const componentOwners = new Map();
+function rememberComponentOwner(message, userId) {
+  if (!message?.id || !userId || !message.components?.length) return;
+  componentOwners.set(message.id, userId);
+  if (componentOwners.size > 2000) componentOwners.delete(componentOwners.keys().next().value);
+}
+function getComponentOwner(messageId) {
+  return componentOwners.get(messageId) || null;
+}
+
 function sanitizeEditPayload(options = {}) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) return options;
   const { ephemeral, flags, ...rest } = options;
@@ -38,15 +48,30 @@ function installArgusResponses(interaction, client) {
     if (interaction.deferred && !interaction.replied) {
       return originalEditReply(sanitizeEditPayload(stylePayload(options, context)));
     }
-    if (interaction.replied) return originalFollowUp(stylePayload(options, context));
-    return originalReply(stylePayload(options, context));
+    if (interaction.replied) {
+      const styledFollow = stylePayload(options, context);
+      const response = await originalFollowUp({ ...styledFollow, ...(styledFollow.components?.length ? { fetchReply: true } : {}) });
+      rememberComponentOwner(response, interaction.user?.id);
+      return response;
+    }
+    const styled = stylePayload(options, context);
+    const response = await originalReply({ ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) });
+    rememberComponentOwner(response, interaction.user?.id);
+    return response;
   };
 
-  interaction.editReply = async (options = {}) =>
-    originalEditReply(sanitizeEditPayload(stylePayload(options, context)));
+  interaction.editReply = async (options = {}) => {
+    const response = await originalEditReply(sanitizeEditPayload(stylePayload(options, context)));
+    rememberComponentOwner(response, interaction.user?.id);
+    return response;
+  };
 
-  interaction.followUp = async (options = {}) =>
-    originalFollowUp(stylePayload(options, context));
+  interaction.followUp = async (options = {}) => {
+    const styled = stylePayload(options, context);
+    const response = await originalFollowUp({ ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) });
+    rememberComponentOwner(response, interaction.user?.id);
+    return response;
+  };
 }
 
 async function safeRespond(interaction, payload, { ephemeral = false } = {}) {
@@ -62,4 +87,4 @@ async function safeShowModal(interaction, modal) {
   return validatedShowModal(interaction, modal);
 }
 
-module.exports = { installArgusResponses, safeRespond, safeShowModal, sanitizeEditPayload };
+module.exports = { installArgusResponses, safeRespond, safeShowModal, sanitizeEditPayload, getComponentOwner };
