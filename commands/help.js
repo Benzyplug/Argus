@@ -254,8 +254,7 @@ function buildPayload(client, selectedKey = null) {
     embeds: [main ? buildMainEmbed(client) : buildCategoryEmbed(client, selectedKey)],
     components: [...buildComponents(selectedKey), ...buildButtons(!main)],
     allowedMentions: { parse: [] },
-    files: fs.existsSync(BANNER_PATH) ? [{ attachment: BANNER_PATH, name: BANNER_NAME }] : [],
-    __argusRaw: true
+    files: fs.existsSync(BANNER_PATH) ? [{ attachment: BANNER_PATH, name: BANNER_NAME }] : []
   };
 }
 
@@ -269,7 +268,10 @@ module.exports = {
     .setDescription('View the Argus command guide'),
 
   async execute(interaction) {
-    await interaction.reply(buildPayload(interaction.client));
+    await interaction.reply({
+      ...buildPayload(interaction.client),
+      __argusRaw: true
+    });
   },
 
   async handleInteraction(interaction) {
@@ -300,8 +302,6 @@ module.exports = {
         ? buildAllPayload(interaction.client)
         : buildPayload(interaction.client, selected);
 
-      delete payload.files;
-      delete payload.__argusRaw;
       await interaction.update(payload);
       return true;
     }
