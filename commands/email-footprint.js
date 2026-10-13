@@ -167,7 +167,8 @@ module.exports = {
         embeds: [invalidInput(
           email,
           'a valid email address (for example: `name@example.com`)',
-          email || 'N/A'
+          email || 'N/A',
+          '❌ Invalid email format'
         )]
       });
     }
