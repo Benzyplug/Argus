@@ -33,7 +33,7 @@ const GROUPS = [
   { key: 'identity', title: '🕵️ OSINT & Identity', description: 'Identity, usernames and company intelligence', names: ['company-search', 'email-footprint', 'email-breach', 'avatar-search', 'maigret', 'sherlock', 'username-gen'] },
   { key: 'transport', title: '🛰️ Transport', description: 'Airport, flight, vehicle and vessel intelligence', names: ['airport', 'flight', 'vehicle', 'vessel'] },
   { key: 'files', title: '🧬 Files & Data', description: 'Files, metadata and blockchain analysis', names: ['blockchain', 'crypto-detect', 'doc-meta', 'exif', 'upload'] },
-  { key: 'utilities', title: '🤖 AI & Utilities', description: 'AI, monitoring, learning and security utilities', names: ['ai', 'health', 'image-ai', 'jwt', 'monitor', 'nuclei-scan', 'explain', 'workflow', 'quiz', 'challenge', 'report', 'glossary', 'case-study', 'how-it-works', 'build-your-own', 'legal-check', 'ethics', 'opsec-tips', 'profile', 'streak', 'leaderboard', 'unlock'] }
+  { key: 'utilities', title: '🤖 AI & Utilities', description: 'AI, monitoring and security utilities', names: ['ai', 'health', 'image-ai', 'jwt', 'monitor', 'nuclei-scan'] }
 ];
 
 function cleanCategoryTitle(title) {
