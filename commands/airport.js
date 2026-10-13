@@ -4,7 +4,16 @@
  * Author: ẞ€ÑZ¥
  */
 
-const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { safeShowModal } = require('../utils/interactionHelper');
+const { createSelectMenu } = require('../utils/components');
+
+function buildActionMenu() {
+    return createSelectMenu('argus:airport:actions', 'airport actions', [
+        { label: 'Run again', value: 'again', description: 'Open the investigation form again', emoji: '🔎' },
+        { label: 'View Argus help', value: 'help', description: 'Browse available Argus operations', emoji: '🧿' }
+    ]);
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -19,7 +28,7 @@ module.exports = {
                 .setDescription('The IATA code of the airport (JFK)')
                 .setRequired(false)),
 
-    async execute(interaction) {
+    async run(interaction) {
         // Load network dependencies only when the command is actually used.
         const axios = require('axios');
         const { getSafeAxiosConfig } = require('../utils/ssrf');
@@ -53,6 +62,56 @@ module.exports = {
                 `❌ **Airport Lookup Failed**\n> Check the ${codeType} code and try again.`
             );
         }
+    }
+    async execute(interaction) {
+        return safeShowModal(interaction, new ModalBuilder()
+            .setCustomId('argus:airport:modal')
+            .setTitle('airport')
+            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('icao').setLabel('ICAO code').setPlaceholder('KJFK').setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('iata').setLabel('IATA code').setPlaceholder('JFK').setStyle(TextInputStyle.Short).setRequired(false))));
+    },
+
+    async handleInteraction(interaction) {
+        if (interaction.isStringSelectMenu() && interaction.customId === 'argus:airport:actions') {
+            if (interaction.values[0] === 'help') {
+                await interaction.reply({ content: 'Use \`/help\` to browse the Argus command center.', ephemeral: true });
+                return true;
+            }
+            if (interaction.values[0] === 'again') {
+                return safeShowModal(interaction, new ModalBuilder()
+                    .setCustomId('argus:airport:modal')
+                    .setTitle('airport')
+                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('icao').setLabel('ICAO code').setPlaceholder('KJFK').setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('iata').setLabel('IATA code').setPlaceholder('JFK').setStyle(TextInputStyle.Short).setRequired(false))));
+            }
+        }
+        if (interaction.isModalSubmit() && interaction.customId === 'argus:airport:modal') {
+            const values = interaction.fields;
+            const options = {
+                getString: (name) => values.getTextInputValue(name) || null,
+                getBoolean: (name) => {
+                    const value = values.getTextInputValue(name);
+                    return value === undefined || value === '' ? null : value === 'true';
+                },
+                getInteger: (name) => {
+                    const value = values.getTextInputValue(name);
+                    const parsed = Number.parseInt(value, 10);
+                    return Number.isFinite(parsed) ? parsed : null;
+                },
+                getSubcommand: () => null
+            };
+            const modalInteraction = new Proxy(interaction, {
+                get(target, prop) {
+                    if (prop === 'options') return options;
+                    const value = Reflect.get(target, prop, target);
+                    return typeof value === 'function' ? value.bind(target) : value;
+                }
+            });
+            await this.run(modalInteraction);
+            await interaction.editReply({ components: [buildActionMenu()] });
+            return true;
+        }
+        return false;
     }
 };
 
