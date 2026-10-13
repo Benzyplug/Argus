@@ -7,10 +7,19 @@
  * to assist in open source intelligence gathering.
  */
 
-const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
+const { SlashCommandBuilder, AttachmentBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { safeShowModal } = require('../utils/interactionHelper');
+const { createSelectMenu } = require('../utils/components');
 const fs = require('fs');
 const { reportFilePath, cleanupFile } = require('../utils/temp');
 const { archiveReport } = require('../utils/reports');
+
+function buildActionMenu() {
+    return createSelectMenu('argus:dork:actions', 'dork actions', [
+        { label: 'Run again', value: 'again', description: 'Open the investigation form again', emoji: '🔎' },
+        { label: 'View Argus help', value: 'help', description: 'Browse available Argus operations', emoji: '🧿' }
+    ]);
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -39,7 +48,7 @@ module.exports = {
                 .setDescription('Include advanced dorks (more invasive)')
                 .setRequired(false)),
     
-    async execute(interaction) {
+    async run(interaction) {
         await interaction.deferReply();
         
         try {
@@ -104,6 +113,60 @@ Use these URLs with browser extensions like "Open Multiple URLs" to open them al
             await interaction.editReply('An error occurred while generating dork URLs.');
         }
     },
+    async execute(interaction) {
+        return safeShowModal(interaction, new ModalBuilder()
+            .setCustomId('argus:dork:modal')
+            .setTitle('dork')
+            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('firstname').setLabel('First name').setPlaceholder('John').setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('lastname').setLabel('Last name').setPlaceholder('Doe').setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('engine').setLabel('Engine').setPlaceholder('google').setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('advanced').setLabel('Advanced (true/false)').setPlaceholder('false').setStyle(TextInputStyle.Short).setRequired(false))));
+    },
+
+    async handleInteraction(interaction) {
+        if (interaction.isStringSelectMenu() && interaction.customId === 'argus:dork:actions') {
+            if (interaction.values[0] === 'help') {
+                await interaction.reply({ content: 'Use \`/help\` to browse the Argus command center.', ephemeral: true });
+                return true;
+            }
+            if (interaction.values[0] === 'again') {
+                return safeShowModal(interaction, new ModalBuilder()
+                    .setCustomId('argus:dork:modal')
+                    .setTitle('dork')
+                    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('firstname').setLabel('First name').setPlaceholder('John').setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('lastname').setLabel('Last name').setPlaceholder('Doe').setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('engine').setLabel('Engine').setPlaceholder('google').setStyle(TextInputStyle.Short).setRequired(false)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('advanced').setLabel('Advanced (true/false)').setPlaceholder('false').setStyle(TextInputStyle.Short).setRequired(false))));
+            }
+        }
+        if (interaction.isModalSubmit() && interaction.customId === 'argus:dork:modal') {
+            const values = interaction.fields;
+            const options = {
+                getString: (name) => values.getTextInputValue(name) || null,
+                getBoolean: (name) => {
+                    const value = values.getTextInputValue(name);
+                    return value === undefined || value === '' ? null : value === 'true';
+                },
+                getInteger: (name) => {
+                    const value = values.getTextInputValue(name);
+                    const parsed = Number.parseInt(value, 10);
+                    return Number.isFinite(parsed) ? parsed : null;
+                },
+                getSubcommand: () => null
+            };
+            const modalInteraction = new Proxy(interaction, {
+                get(target, prop) {
+                    if (prop === 'options') return options;
+                    const value = Reflect.get(target, prop, target);
+                    return typeof value === 'function' ? value.bind(target) : value;
+                }
+            });
+            await this.run(modalInteraction);
+            await interaction.editReply({ components: [buildActionMenu()] });
+            return true;
+        }
+        return false;
+    }
 };
 
 /**
