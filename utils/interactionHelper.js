@@ -40,16 +40,20 @@ function installArgusResponses(interaction, client) {
   };
 
   interaction.reply = async (options = {}) => {
+    const raw = Boolean(options?.__argusRaw);
+    const cleanOptions = raw ? { ...options } : options;
+    if (raw) delete cleanOptions.__argusRaw;
     if (interaction.deferred && !interaction.replied) {
-      return originalEditReply(sanitizeEditPayload(stylePayload(options, context)));
+      const payload = raw ? cleanOptions : sanitizeEditPayload(stylePayload(cleanOptions, context));
+      return originalEditReply(sanitizeEditPayload(payload));
     }
     if (interaction.replied) {
-      const styledFollow = stylePayload(options, context);
+      const styledFollow = raw ? cleanOptions : stylePayload(cleanOptions, context);
       const response = await originalFollowUp({ ...styledFollow, ...(styledFollow.components?.length ? { fetchReply: true } : {}) });
       rememberComponentOwner(response, interaction.user?.id);
       return response;
     }
-    const styled = stylePayload(options, context);
+    const styled = raw ? cleanOptions : stylePayload(cleanOptions, context);
     const response = await originalReply({ ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) });
     rememberComponentOwner(response, interaction.user?.id);
     return response;
