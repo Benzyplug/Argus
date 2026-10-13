@@ -62,11 +62,12 @@ npm start
 
 ## ⌘ Command Surface
 
-Argus exposes **41 focused slash commands** through an interactive `/help` command with category filtering and command search.
+Argus exposes **42 focused slash commands** through an interactive `/help` command with category filtering and command search.
 
 ### 🎖 Rankings
 
 - `/bot`
+- `/help`
 
 ### 🌐 Web Intelligence
 
@@ -118,7 +119,6 @@ Argus exposes **41 focused slash commands** through an interactive `/help` comma
 ### 🤖 AI & Utilities
 
 - `/ai`
-- `/health`
 - `/image-ai`
 - `/jwt`
 - `/monitor`
