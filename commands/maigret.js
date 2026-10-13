@@ -5,7 +5,8 @@
  * 
  * A discord wrapper around https://github.com/soxoj/maigret
  */
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { safeShowModal } = require('../utils/interactionHelper');
 const { safeSpawnToFile } = require('../utils/process');
 const { isValidUsername } = require('../utils/validation');
 const fs = require('fs').promises;
@@ -31,7 +32,7 @@ module.exports = {
                 .setMaxValue(600)
                 .setRequired(false)),
     
-    async execute(interaction) {
+    async run(interaction) {
         await interaction.deferReply();
         
         // Get command options
@@ -139,5 +140,70 @@ module.exports = {
             }
         }
     },
+    
+    async execute(interaction) {
+        return safeShowModal(interaction, new ModalBuilder()
+            .setCustomId('argus:maigret:modal')
+            .setTitle('maigret')
+            .addComponents(
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('username')
+                        .setLabel('Username')
+                        .setPlaceholder('john_doe')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true)
+                ),
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('verbose')
+                        .setLabel('Verbose')
+                        .setPlaceholder('false')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false)
+                ),
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('timeout')
+                        .setLabel('Timeout seconds')
+                        .setPlaceholder('300')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false)
+                )
+            ));
+    },
+
+    async handleInteraction(interaction) {
+        if (interaction.isModalSubmit() && interaction.customId === 'argus:maigret:modal') {
+            const values = interaction.fields;
+            const options = {
+                getString: (name) => {
+                    const value = values.getTextInputValue(name);
+                    if (name === 'verbose' || name === 'include-nsfw') return value === 'true';
+                    return value || null;
+                },
+                getBoolean: (name) => {
+                    const value = values.getTextInputValue(name);
+                    return value === undefined || value === '' ? null : value === 'true';
+                },
+                getInteger: (name) => {
+                    const value = values.getTextInputValue(name);
+                    const parsed = Number.parseInt(value, 10);
+                    return Number.isFinite(parsed) ? parsed : null;
+                },
+                getSubcommand: () => null
+            };
+            const modalInteraction = new Proxy(interaction, {
+                get(target, prop) {
+                    if (prop === 'options') return options;
+                    const value = Reflect.get(target, prop, target);
+                    return typeof value === 'function' ? value.bind(target) : value;
+                }
+            });
+            await this.run(modalInteraction);
+            return true;
+        }
+        return false;
+    }
 };
 
