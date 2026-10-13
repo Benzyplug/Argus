@@ -35,14 +35,14 @@ const GROUPS = [
   {
     key: 'web',
     title: '🌐 Web Intelligence',
-    description: 'Web, domain, URL and reconnaissance operations',
-    names: ['dns', 'dork', 'extract-links', 'favicon', 'host-lookup', 'link-check', 'redirect-check', 'web-recon', 'whois']
+    description: 'Web, domain, URL and network reconnaissance',
+    names: ['dns', 'dork', 'extract-links', 'favicon', 'host-lookup', 'link-check', 'redirect-check', 'web-recon', 'whois', 'cert-search', 'subdomain-enum', 'wayback-history', 'web-tech', 'shodan-lookup', 'ip-info', 'ip-reputation']
   },
   {
     key: 'identity',
     title: '🕵️ OSINT & Identity',
-    description: 'Identity and public-data investigation',
-    names: ['company-search', 'google-investigate', 'maigret', 'nike', 'sherlock', 'username-gen']
+    description: 'Identity, email and public-data investigation',
+    names: ['company-search', 'google-investigate', 'maigret', 'nike', 'sherlock', 'username-gen', 'avatar-search', 'email-breach', 'email-footprint']
   },
   {
     key: 'transport',
