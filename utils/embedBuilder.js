@@ -74,7 +74,7 @@ function createArgusEmbed(config = {}, context = {}) {
   if (config.banner) { const url = safeUrl(config.banner); if (url) embed.setImage(url); }
   if (config.author) embed.setAuthor(config.author);
   if (config.footer !== false) embed.setFooter({ text: String(config.footer || ARGUS_FOOTER()).slice(0, 2048) });
-  if (config.timestamp !== false) embed.setTimestamp(config.timestamp instanceof Date ? config.timestamp : new Date());
+  if (config.timestamp === true) embed.setTimestamp(config.timestamp instanceof Date ? config.timestamp : new Date());
   return embed;
 }
 
@@ -121,8 +121,9 @@ function styleEmbed(input, context = {}) {
   const isError = /(^|\s)(❌|error|failed|failure)/i.test(title);
   if (title && !/^[✅❌⚠️]/.test(title)) embed.setTitle(title.slice(0, 256));
   let fields = decorateFields([...(json.fields || [])]);
-  if (!fields.some(f => /(?:🕒|⏱️)\s*Scanned at/i.test(f.name || ''))) fields.push({ name: '🕒 Scanned at', value: '<t:' + Math.floor(Date.now() / 1000) + ':F>', inline: false });
   if (isError && fields.length < 25) fields.push({ name: '🆘 Support', value: process.env.SUPPORT_URL || 'https://github.com/Benzyplug/Argus/issues', inline: false });
+  if (!json.image?.url && hasLocalArgusBanner()) embed.setImage('attachment://banner.png');
+  delete embed.data.timestamp;
   embed.setFields(fields.slice(0, 25));
   if (!json.footer?.text) embed.setFooter({ text: ARGUS_FOOTER() });
   return embed;
@@ -156,7 +157,11 @@ function stylePayload(payload, context = {}) {
     result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
   }
 
-  // Keep normal responses clean; banners are opt-in per command.
+  if (hasLocalArgusBanner()) {
+    const files = Array.isArray(result.files) ? [...result.files] : [];
+    if (!files.some(file => file?.name === 'banner.png')) files.push(argusBannerFile());
+    result.files = files.filter(Boolean);
+  }
   return result;
 }
 
