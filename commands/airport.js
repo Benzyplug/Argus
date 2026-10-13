@@ -62,7 +62,8 @@ module.exports = {
                 `❌ **Airport Lookup Failed**\n> Check the ${codeType} code and try again.`
             );
         }
-    }
+    },
+
     async execute(interaction) {
         return safeShowModal(interaction, new ModalBuilder()
             .setCustomId('argus:airport:modal')
