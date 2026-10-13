@@ -5,7 +5,10 @@ const { getArgusBanner } = require('../utils/embedBuilder');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('bot')
-    .setDescription('Display Argus bot information'),
+    .setDescription('Display Argus bot information and health')
+    .addBooleanOption(option => option.setName('detailed').setDescription('Show detailed system information').setRequired(false))
+    .addBooleanOption(option => option.setName('check-apis').setDescription('Test external API connectivity').setRequired(false))
+    .addBooleanOption(option => option.setName('check-tools').setDescription('Verify external tool availability').setRequired(false)),
 
   async execute(interaction) {
     const bot = await interaction.client.user.fetch(true);
