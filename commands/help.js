@@ -60,7 +60,7 @@ const GROUPS = [
     key: 'utilities',
     title: '🤖 AI & Utilities',
     description: 'AI, monitoring and security utilities',
-    names: ['ai', 'health', 'image-ai', 'jwt', 'monitor', 'nuclei-scan']
+    names: ['ai', 'image-ai', 'jwt', 'monitor', 'nuclei-scan']
   }
 ];
 
