@@ -9,6 +9,18 @@
 
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { safeShowModal } = require('../utils/interactionHelper');
+const { createSelectMenu } = require('../utils/components');
+
+function buildActionMenu() {
+    return createSelectMenu(
+        'argus:flight-number:actions',
+        'flight number actions',
+        [
+            { label: 'Run again', value: 'again', description: 'Open the investigation form again', emoji: '🔎' },
+            { label: 'View Argus help', value: 'help', description: 'Browse available Argus operations', emoji: '🧿' }
+        ]
+    );
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -77,6 +89,21 @@ module.exports = {
     },
 
     async handleInteraction(interaction) {
+        if (interaction.isStringSelectMenu() && interaction.customId === 'argus:flight-number:actions') {
+            if (interaction.values[0] === 'help') {
+                await interaction.reply({ content: 'Use \`/help\` to browse the Argus command center.', ephemeral: true });
+                return true;
+            }
+            if (interaction.values[0] === 'again') {
+                return safeShowModal(interaction, new ModalBuilder()
+                    .setCustomId('argus:flight-number:modal')
+                    .setTitle('flight number')
+                    .addComponents(
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('flight').setLabel('Flight number').setPlaceholder('BA234').setStyle(TextInputStyle.Short).setRequired(true))
+                    ));
+            }
+        }
+
         if (interaction.isModalSubmit() && interaction.customId === 'argus:flight-number:modal') {
             const values = interaction.fields;
             const options = {
@@ -104,6 +131,7 @@ module.exports = {
                 }
             });
             await this.run(modalInteraction);
+            await interaction.editReply({ components: [buildActionMenu()] });
             return true;
         }
         return false;
