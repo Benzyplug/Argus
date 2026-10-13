@@ -11,7 +11,7 @@ const { startHealthWriter, stopHealthWriter, markReady, markShuttingDown, writeS
 const { startMetricsServer, stopMetricsServer, commandDuration, commandErrors, ratelimitBlocks, discordEvents } = require('./utils/metrics');
 const { startHourlySweep, stopHourlySweep } = require('./utils/temp-sweep');
 const { pruneReports, startReportsSweep, stopReportsSweep } = require('./utils/reports');
-const { installArgusResponses } = require('./utils/interactionHelper');
+const { installArgusResponses, getComponentOwner } = require('./utils/interactionHelper');
 const { handleInteractionError } = require('./utils/errorHandler');
 
 require('./utils/config');
@@ -303,6 +303,17 @@ client.on(Events.InteractionCreate, async interaction => {
                     });
                 } catch {}
             }
+            return;
+        }
+    }
+
+    // Component ownership: interactive controls belong to the user who invoked the command.
+    if (interaction.isMessageComponent?.()) {
+        const ownerId = getComponentOwner(interaction.message?.id);
+        if (ownerId && ownerId !== interaction.user?.id) {
+            try {
+                await interaction.reply({ content: 'This control belongs to the user who started this operation.', flags: MessageFlags.Ephemeral });
+            } catch {}
             return;
         }
     }
