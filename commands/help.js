@@ -22,7 +22,7 @@ const HELP_MODAL_INPUT_ID = 'argus:help:custom:command';
 const GROUPS = [
   { key: 'rankings', title: '🎖 Rankings', description: 'Bot information and rankings', names: ['bot'] },
   { key: 'web', title: '🌐 Web Intelligence', description: 'Domains, hosts, links and web reconnaissance', names: ['dns', 'dork', 'extract-links', 'favicon', 'host-lookup', 'link-check', 'redirect-check', 'web-recon', 'whois'] },
-  { key: 'identity', title: '🕵️ OSINT & Identity', description: 'Identity, usernames and company intelligence', names: ['company-search', 'google-investigate', 'maigret', 'nike', 'sherlock', 'username-gen'] },
+  { key: 'identity', title: '🕵️ OSINT & Identity', description: 'Identity, usernames and company intelligence', names: ['company-search', 'email-footprint', 'google-investigate', 'maigret', 'nike', 'sherlock', 'username-gen'] },
   { key: 'transport', title: '🛰️ Transport', description: 'Airport, flight, vehicle and vessel intelligence', names: ['airport', 'flight', 'flight-number', 'vehicle', 'vessel'] },
   { key: 'files', title: '🧬 Files & Data', description: 'Files, metadata and blockchain analysis', names: ['blockchain', 'crypto-detect', 'doc-meta', 'exif', 'upload'] },
   { key: 'utilities', title: '🤖 AI & Utilities', description: 'AI, monitoring and security utilities', names: ['ai', 'health', 'image-ai', 'jwt', 'monitor', 'nuclei-scan'] }
