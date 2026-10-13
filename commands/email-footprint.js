@@ -166,12 +166,6 @@ function buildResultsEmbed(email, platforms, seconds, interaction) {
     inline: false
   });
 
-  fields.push({
-    name: '⌁ What’s next',
-    value: 'Use the dropdown below to scan another email or open the Argus command guide.',
-    inline: false
-  });
-
   const avatar = interaction.client.user?.displayAvatarURL?.({ extension: 'png', size: 128 });
 
   return createArgusEmbed({
@@ -179,7 +173,6 @@ function buildResultsEmbed(email, platforms, seconds, interaction) {
     description: '> Found the email registered on **' + platforms.length + '** platforms.',
     color: 0x5865F2,
     thumbnail: avatar || undefined,
-    banner: process.env.EMBED_BANNER_URL || undefined,
     fields,
     footer: 'Source: Holehe • ' + HOLEHE_SOURCE,
     timestamp: true
