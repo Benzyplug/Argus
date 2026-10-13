@@ -18,9 +18,21 @@
 
 const { SlashCommandBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { safeShowModal } = require('../utils/interactionHelper');
+const { createSelectMenu } = require('../utils/components');
 const axios = require('axios');
 const { getSafeAxiosConfig } = require('../utils/ssrf');
 const { isValidDomain, sanitizeInput } = require('../utils/validation');
+
+function buildActionMenu() {
+    return createSelectMenu(
+        'argus:dns:actions',
+        'dns actions',
+        [
+            { label: 'Run again', value: 'again', description: 'Open the investigation form again', emoji: '🔎' },
+            { label: 'View Argus help', value: 'help', description: 'Browse available Argus operations', emoji: '🧿' }
+        ]
+    );
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -189,6 +201,21 @@ module.exports = {
     },
 
     async handleInteraction(interaction) {
+        if (interaction.isStringSelectMenu() && interaction.customId === 'argus:dns:actions') {
+            if (interaction.values[0] === 'help') {
+                await interaction.reply({ content: 'Use \`/help\` to browse the Argus command center.', ephemeral: true });
+                return true;
+            }
+            if (interaction.values[0] === 'again') {
+                return safeShowModal(interaction, new ModalBuilder()
+                    .setCustomId('argus:dns:modal')
+                    .setTitle('dns')
+                    .addComponents(
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('domain').setLabel('Domain').setPlaceholder('example.com').setStyle(TextInputStyle.Short).setRequired(true))
+                    ));
+            }
+        }
+
         if (interaction.isModalSubmit() && interaction.customId === 'argus:dns:modal') {
             const values = interaction.fields;
             const options = {
@@ -216,6 +243,7 @@ module.exports = {
                 }
             });
             await this.run(modalInteraction);
+            await interaction.editReply({ components: [buildActionMenu()] });
             return true;
         }
         return false;
