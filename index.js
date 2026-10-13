@@ -13,6 +13,7 @@ const { startHourlySweep, stopHourlySweep } = require('./utils/temp-sweep');
 const { pruneReports, startReportsSweep, stopReportsSweep } = require('./utils/reports');
 const { installArgusResponses, getComponentOwner } = require('./utils/interactionHelper');
 const { handleInteractionError } = require('./utils/errorHandler');
+const { auditCommand } = require('./utils/auditLog');
 
 require('./utils/config');
 
@@ -361,14 +362,17 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 
+    const startedAt = Date.now();
     const endTimer = commandDuration.startTimer({ command: cmdName });
 
     try {
         await command.execute(interaction);
         logger.info({ command: cmdName }, 'Command completed successfully');
+        void auditCommand(client, interaction, { status: 'success', durationMs: Date.now() - startedAt });
     } catch (error) {
         commandErrors.inc({ command: cmdName, reason: error.name || 'Error' });
         logger.error({ command: cmdName, err: error }, 'Error executing command');
+        void auditCommand(client, interaction, { status: 'error', durationMs: Date.now() - startedAt, error });
 
         await handleInteractionError(interaction, error, { command: cmdName });
     } finally {
