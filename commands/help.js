@@ -26,7 +26,12 @@ const BANNER_PATH = path.join(__dirname, '..', 'banner.png');
 const BANNER_NAME = 'banner.png';
 
 const GROUPS = [
-  { key: 'rankings', title: '🎖 Rankings', description: 'Core Argus information', names: ['bot'] },
+  {
+    key: 'rankings',
+    title: '🎖 Rankings',
+    description: 'Core Argus information',
+    names: ['bot']
+  },
   {
     key: 'web',
     title: '🌐 Web Intelligence',
@@ -70,7 +75,7 @@ function availableCommands(client) {
 }
 
 function buildFooter() {
-  return '⌬ ARGUS • v' + pkg.version + ' • BY ẞ€ÑZ¥';
+  return 'Made with ❤️ • ARGUS v' + pkg.version + ' • ẞ€ÑZ¥';
 }
 
 function attachBanner(embed) {
@@ -80,37 +85,38 @@ function attachBanner(embed) {
   return embed;
 }
 
-function buildMainEmbed(client) {
-  const lines = GROUPS.map(group => {
-    const available = availableCommands(client);
-    const commands = group.names
-      .map(name => available.get(name))
-      .filter(Boolean)
-      .map(command => (command.restricted ? '🔒 ' : '') + '› `/' + command.name + '`')
-      .join('  •  ');
-
-    return '**' + group.title + '**\n' + (commands || 'No commands currently registered.');
-  });
-
-  const embed = new EmbedBuilder()
+function baseEmbed(client) {
+  return new EmbedBuilder()
     .setColor(0x5865f2)
     .setAuthor({
       name: 'ARGUS • Open Source Intelligence',
       iconURL: client.user?.displayAvatarURL?.({ extension: 'png', size: 128 })
-    })
-    .setTitle('Command Guide')
-    .setDescription(
-      'Here is the list of available Argus commands.\n\n' +
-      '**For more info**\n' +
-      'Choose a category below to browse its operations, or use **Find a command…** to search by name or keyword.\n\n' +
-      '**Need more help?**\n' +
-      'Contact <@1317480616048070656> if you need help.\n\n' +
-      lines.join('\n\n')
-    )
-    .setTimestamp()
-    .setFooter({ text: buildFooter() });
+    });
+}
 
-  return attachBanner(embed);
+function buildMainEmbed(client) {
+  const embed = baseEmbed(client)
+    .setTitle('🛡️ ARGUS Help Center')
+    .setDescription(
+      'Your open-source intelligence toolkit for discovering, investigating, and correlating public information.\n\n' +
+      '**Getting Started**\n' +
+      'Use the menu below to browse Argus commands by category. Select a category to view its available operations.\n\n' +
+      '**How It Works**\n' +
+      '• Choose a category from the menu\n' +
+      '• Select an operation to see what it does\n' +
+      '• Use the command directly from Discord\n\n' +
+      '**Need help?** Contact <@1317480616048070656>.'
+    );
+
+  embed.addFields(
+    ...GROUPS.map(group => ({
+      name: group.title,
+      value: group.description,
+      inline: true
+    }))
+  );
+
+  return attachBanner(embed.setTimestamp().setFooter({ text: buildFooter() }));
 }
 
 function buildCategoryEmbed(client, key) {
@@ -120,28 +126,31 @@ function buildCategoryEmbed(client, key) {
   const available = availableCommands(client);
   const items = group.names.map(name => available.get(name)).filter(Boolean);
 
-  const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setAuthor({
-      name: 'ARGUS • Open Source Intelligence',
-      iconURL: client.user?.displayAvatarURL?.({ extension: 'png', size: 128 })
-    })
+  const embed = baseEmbed(client)
     .setTitle(group.title)
-    .setDescription(group.description + '\n\nChoose an operation from this section.');
-  
+    .setDescription(
+      group.description + '\n\n' +
+      'Select an operation below to use it in Discord.'
+    );
+
   if (items.length) {
     embed.addFields({
-      name: 'Available operations',
+      name: 'Available commands',
       value: items
-        .map(command => (command.restricted ? '🔒 ' : '') + '› `/' + command.name + '` — ' + command.description)
+        .map(command => {
+          const lock = command.restricted ? '🔒 ' : '';
+          return lock + '**' + command.name + '** — ' + command.description;
+        })
         .join('\n')
     });
   } else {
-    embed.addFields({ name: 'Available operations', value: 'No commands currently registered in this category.' });
+    embed.addFields({
+      name: 'Available commands',
+      value: 'No commands are currently registered in this category.'
+    });
   }
 
-  embed.setTimestamp().setFooter({ text: buildFooter() });
-  return attachBanner(embed);
+  return attachBanner(embed.setTimestamp().setFooter({ text: buildFooter() }));
 }
 
 function buildSearchEmbed(client, query) {
@@ -156,12 +165,8 @@ function buildSearchEmbed(client, query) {
     .sort((a, b) => a.name.localeCompare(b.name))
     .slice(0, 15);
 
-  const embed = new EmbedBuilder()
+  const embed = baseEmbed(client)
     .setColor(matches.length ? 0x5865f2 : 0xe74c3c)
-    .setAuthor({
-      name: 'ARGUS • Open Source Intelligence',
-      iconURL: client.user?.displayAvatarURL?.({ extension: 'png', size: 128 })
-    })
     .setTitle(matches.length ? '🔎 Command Search' : '❌ No Command Found')
     .setDescription(
       matches.length
@@ -174,22 +179,21 @@ function buildSearchEmbed(client, query) {
       name: 'Matches',
       value: matches.map(command => {
         const lock = command.restricted ? '🔒 ' : '';
-        return lock + '› `/' + command.name + '` — ' + command.description;
+        return lock + '**' + command.name + '** — ' + command.description;
       }).join('\n')
     });
   }
 
-  embed.setTimestamp().setFooter({ text: buildFooter() });
-  return attachBanner(embed);
+  return attachBanner(embed.setTimestamp().setFooter({ text: buildFooter() }));
 }
 
 function buildComponents(selectedKey = null) {
   const options = [
     {
-      label: 'All Operations',
+      label: 'All Commands',
       value: 'all',
-      description: 'Browse every Argus command',
-      emoji: '🧿',
+      description: 'Return to the Argus Help Center',
+      emoji: '🛡️',
       default: !selectedKey
     },
     ...GROUPS.map(group => ({
@@ -206,7 +210,13 @@ function buildComponents(selectedKey = null) {
     }
   ];
 
-  return [createSelectMenu(HELP_MENU_ID, 'Select a category or find a command…', options)];
+  return [
+    createSelectMenu(
+      HELP_MENU_ID,
+      'Select to view the commands',
+      options
+    )
+  ];
 }
 
 function buildButtons(showHome = false) {
@@ -216,8 +226,8 @@ function buildButtons(showHome = false) {
     buttons.push(
       new ButtonBuilder()
         .setCustomId(HELP_HOME_ID)
-        .setLabel('Home')
-        .setEmoji('⌂')
+        .setLabel('Back')
+        .setEmoji('⬅️')
         .setStyle(ButtonStyle.Secondary)
     );
   }
@@ -225,11 +235,11 @@ function buildButtons(showHome = false) {
   buttons.push(
     new ButtonBuilder()
       .setCustomId(HELP_SEARCH_ID)
-      .setLabel('Find Command')
+      .setLabel('Find a Command')
       .setEmoji('🔎')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setLabel('Support')
+      .setLabel('Report Bug')
       .setURL('https://github.com/Benzyplug/Argus/issues')
       .setStyle(ButtonStyle.Link)
   );
