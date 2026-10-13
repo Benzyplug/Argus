@@ -23,7 +23,7 @@ const GROUPS = [
   { key: 'rankings', title: '🎖 Rankings', description: 'Bot information and rankings', names: ['bot'] },
   { key: 'web', title: '🌐 Web Intelligence', description: 'Domains, hosts, links and web reconnaissance', names: ['dns', 'dork', 'extract-links', 'favicon', 'host-lookup', 'link-check', 'redirect-check', 'web-recon', 'whois', 'subdomain-enum', 'cert-search', 'ip-info', 'shodan-lookup', 'ip-reputation', 'wayback-history', 'web-tech'] },
   { key: 'identity', title: '🕵️ OSINT & Identity', description: 'Identity, usernames and company intelligence', names: ['company-search', 'email-footprint', 'email-breach', 'avatar-search', 'maigret', 'sherlock', 'username-gen'] },
-  { key: 'transport', title: '🛰️ Transport', description: 'Airport, flight, vehicle and vessel intelligence', names: ['airport', 'flight', 'flight-number', 'vehicle', 'vessel'] },
+  { key: 'transport', title: '🛰️ Transport', description: 'Airport, flight, vehicle and vessel intelligence', names: ['airport', 'flight', 'vehicle', 'vessel'] },
   { key: 'files', title: '🧬 Files & Data', description: 'Files, metadata and blockchain analysis', names: ['blockchain', 'crypto-detect', 'doc-meta', 'exif', 'upload'] },
   { key: 'utilities', title: '🤖 AI & Utilities', description: 'AI, monitoring and security utilities', names: ['ai', 'health', 'image-ai', 'jwt', 'monitor', 'nuclei-scan', 'explain', 'workflow', 'quiz', 'challenge', 'report', 'glossary', 'case-study', 'how-it-works', 'build-your-own', 'legal-check', 'ethics', 'opsec-tips', 'profile', 'streak', 'leaderboard', 'unlock'] }
 ];
@@ -44,39 +44,34 @@ function availableCommands(client) {
 
 function buildHelpEmbed(client, selectedKey = null) {
   const available = availableCommands(client);
-  const fields = [];
-  const assigned = new Set();
-  const selected = selectedKey ? GROUPS.find(group => group.key === selectedKey) : null;
-  const groups = selected ? [selected] : GROUPS;
-
-  for (const group of groups) {
-    const items = group.names.map(name => available.get(name)).filter(Boolean);
-    items.forEach(c => assigned.add(c.name));
-    if (items.length) fields.push({ name: group.title, value: commandLine(items), inline: false });
+  if (!selectedKey) {
+    return new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle('⌬ ARGUS • Command Center')
+      .setDescription('**Open-source intelligence toolkit**\nChoose a category below to browse operations, or use **Find a command…** to search.')
+      .addFields(GROUPS.map(group => ({ name: group.title, value: group.description, inline: true })))
+      .setFooter({ text: '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥' })
+      .setTimestamp();
   }
-
-  if (!selected) {
-    const other = [...available.values()]
-      .filter(c => !assigned.has(c.name) && !['help', 'owner', 'commands'].includes(c.name))
-      .sort((a, b) => a.name.localeCompare(b.name));
-    if (other.length) fields.push({ name: '⌁ Other Operations', value: commandLine(other), inline: false });
-  }
-
-  return new EmbedBuilder()
+  const group = GROUPS.find(item => item.key === selectedKey);
+  if (!group) return buildHelpEmbed(client);
+  const items = group.names.map(name => available.get(name)).filter(Boolean);
+  const embed = new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle(selected ? selected.title : '⌬ ARGUS Command Center')
-    .setDescription(
-      (selected ? selected.description + '\n\n' : '') +
-      '**Available operations**\n' +
-      'Use the dropdown below to filter commands, or choose **Find a command…** to open the command finder.\n\n' +
-      '**Support**\n' +
-      'Contact ' + OWNER_MENTION + ' if you need help.'
-    )
-    .addFields(fields.slice(0, 25))
+    .setTitle(group.title)
+    .setDescription(group.description + '\n\nChoose another category below to switch sections.')
     .setFooter({ text: '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥' })
     .setTimestamp();
+  for (let i = 0; i < items.length; i += 10) {
+    const chunk = items.slice(i, i + 10);
+    embed.addFields({
+      name: items.length > 10 ? 'Operations ' + (Math.floor(i / 10) + 1) : 'Operations',
+      value: commandLine(chunk),
+      inline: false
+    });
+  }
+  return embed;
 }
-
 function buildHelpComponents(selectedKey = null) {
   const options = [
     { label: 'All operations', value: 'all', description: 'Show every Argus command group', emoji: '🧿', default: !selectedKey },
@@ -94,27 +89,26 @@ function buildHelpComponents(selectedKey = null) {
 function buildCommandEmbed(client, query) {
   const available = availableCommands(client);
   const clean = String(query || '').trim().replace(/^\//, '').toLowerCase();
-  const exact = available.get(clean);
-  const matches = exact ? [exact] : [...available.values()]
-    .filter(command => command.name.includes(clean))
+  const matches = [...available.values()]
+    .filter(command => command.name.includes(clean) || command.description.toLowerCase().includes(clean))
     .sort((a, b) => a.name.localeCompare(b.name))
-    .slice(0, 12);
-
-  if (!matches.length) {
+    .slice(0, 15);
+  if (!clean || !matches.length) {
     return new EmbedBuilder()
       .setColor(0xe74c3c)
-      .setTitle('❌ Command not found')
-      .setDescription('No Argus command matched `/' + clean.slice(0, 100) + '`. Use `/help` to browse the available operations.')
+      .setTitle('❌ No command found')
+      .setDescription(clean ? 'Nothing matched `' + clean.slice(0, 100) + '`.' : 'Enter a command name or keyword.')
       .setFooter({ text: '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥' })
       .setTimestamp();
   }
-
   return new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle(exact ? '⌬ /' + exact.name : '⌬ Matching commands')
-    .setDescription(matches.map(command =>
-      (command.restricted ? '🔒 ' : '› ') + '`/' + command.name + '` — ' + command.description
-    ).join('\n'))
+    .setTitle('🔎 Command Search')
+    .setDescription('Results for **' + clean.slice(0, 100) + '**')
+    .addFields({
+      name: 'Matches',
+      value: matches.map(command => (command.restricted ? '🔒' : '›') + ' `/' + command.name + '` — ' + command.description).join('\n')
+    })
     .setFooter({ text: '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥' })
     .setTimestamp();
 }
