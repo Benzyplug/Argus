@@ -62,7 +62,7 @@ npm start
 
 ## ⌘ Command Surface
 
-Argus currently exposes **32 focused slash commands** through an interactive `/help` command with category filtering and command search.
+Argus exposes **42 focused slash commands** through an interactive `/help` command with category filtering and command search.
 
 ### 🎖 Rankings
 
@@ -79,6 +79,13 @@ Argus currently exposes **32 focused slash commands** through an interactive `/h
 - `/redirect-check`
 - `/web-recon`
 - `/whois`
+- `/cert-search`
+- `/subdomain-enum`
+- `/wayback-history`
+- `/web-tech`
+- `/shodan-lookup`
+- `/ip-info`
+- `/ip-reputation`
 
 ### 🕵️ OSINT & Identity
 
@@ -88,6 +95,9 @@ Argus currently exposes **32 focused slash commands** through an interactive `/h
 - `/nike`
 - `/sherlock`
 - `/username-gen`
+- `/avatar-search`
+- `/email-breach`
+- `/email-footprint`
 
 ### 🛰️ Transport
 
@@ -115,8 +125,6 @@ Argus currently exposes **32 focused slash commands** through an interactive `/h
 - `/nuclei-scan`
 
 `/help` also provides a category dropdown and a **Find a command…** modal.
-
----
 
 ## 🤖 AI
 
