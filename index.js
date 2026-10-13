@@ -327,6 +327,7 @@ client.on(Events.InteractionCreate, async interaction => {
                 const handled = await command.handleInteraction(interaction);
                 if (handled) return;
             } catch (error) {
+                void auditCommand(client, interaction, { status: 'error', error });
                 await handleInteractionError(interaction, error, { command: interaction.commandName || 'component' });
                 return;
             }
@@ -345,6 +346,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const { allowed, reason } = checkPermission(interaction);
     if (!allowed) {
         try {
+            void auditCommand(client, interaction, { status: 'error', error: new Error(reason) });
             return await interaction.reply({ content: reason, flags: MessageFlags.Ephemeral });
         } catch {
             return;
@@ -356,6 +358,7 @@ client.on(Events.InteractionCreate, async interaction => {
     if (limited) {
         ratelimitBlocks.inc({ command: cmdName });
         try {
+            void auditCommand(client, interaction, { status: 'error', error: new Error(rateLimitReason) });
             return await interaction.reply({ content: rateLimitReason, flags: MessageFlags.Ephemeral });
         } catch {
             return;
