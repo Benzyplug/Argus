@@ -39,7 +39,6 @@ const COMMAND_METADATA = Object.freeze({
     'monitor.js': { name: 'monitor', description: 'Monitor a target for changes and activity.' },
     'nike.js': { name: 'nike', description: 'Search Nike product and release information.' },
     'nuclei.js': { name: 'nuclei-scan', description: 'Scan a target for known security findings with Nuclei.' },
-    'pappers.js': { name: 'company-search', description: 'Search public company and business information.' },
     'recon-web.js': { name: 'web-recon', description: 'Run reconnaissance checks against a website.' },
     'redirect-chain.js': { name: 'redirect-check', description: 'Trace a URL redirect chain and final destination.' },
     'rekognition.js': { name: 'image-ai', description: 'Analyze an image with AI-powered image recognition.' },
