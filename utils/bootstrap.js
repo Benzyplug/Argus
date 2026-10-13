@@ -16,7 +16,7 @@ const ACTIVE_COMMAND_NAMES = new Set([
     'bot',
     'dns', 'dork', 'extract-links', 'favicon', 'host-lookup', 'link-check', 'redirect-check', 'web-recon', 'whois',
     'company-search', 'google-investigate', 'maigret', 'nike', 'sherlock', 'username-gen',
-    'airport', 'flight', 'vehicle', 'vessel',
+    'airport', 'flight', 'flight-number', 'vehicle', 'vessel',
     'blockchain', 'crypto-detect', 'doc-meta', 'exif', 'upload',
     'ai', 'health', 'image-ai', 'jwt', 'monitor', 'nuclei-scan'
 ]);
