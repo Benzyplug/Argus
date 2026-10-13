@@ -99,7 +99,7 @@ function buildCategoryEmbed(client, key) {
   if (items.length) {
     const lines = items.map(command => {
       const lock = command.restricted ? '🔒 ' : '';
-      return lock + '</' + command.name + '> — ' + command.description;
+      return lock + '`/' + command.name + '` — ' + command.description;
     });
     for (let i = 0; i < lines.length; i += 12) {
       embed.addFields({
@@ -146,7 +146,7 @@ function buildSearchEmbed(client, query) {
       name: 'Matches',
       value: matches.map(command => {
         const lock = command.restricted ? '🔒 ' : '';
-        return lock + '</' + command.name + '> — ' + command.description;
+        return lock + '`/' + command.name + '` — ' + command.description;
       }).join('\\n')
     });
   }
@@ -222,7 +222,7 @@ function buildAllPayload(client) {
   const groups = GROUPS.map(group => {
     const items = group.names.map(name => available.get(name)).filter(Boolean);
     return '**' + group.title + '**\\n' + (items.length
-      ? items.map(c => (c.restricted ? '🔒 ' : '') + '</' + c.name + '>').join('  •  ')
+      ? items.map(c => (c.restricted ? '🔒 ' : '') + '`/' + c.name + '`').join('  •  ')
       : 'No commands');
   });
 
@@ -317,12 +317,11 @@ module.exports = {
       const payload = buildPayload(interaction.client);
       payload.embeds = [buildSearchEmbed(interaction.client, query)];
       payload.components = [...buildComponents(null), ...buildButtons(false)];
-      delete payload.files;
-      delete payload.__argusRaw;
       await interaction.reply({
         ...payload,
         flags: MessageFlags.Ephemeral,
-        allowedMentions: { parse: [] }
+        allowedMentions: { parse: [] },
+        __argusRaw: true
       });
       return true;
     }
