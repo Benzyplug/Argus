@@ -169,7 +169,7 @@ function loadingEmbed(interaction, toolName) {
   const target = targetFromInteraction(interaction);
   return createArgusEmbed({
     title: '⌁ Processing…',
-    description: '> `〢` Processing your request…',
+    description: '〢 Processing your request…',
     fields: [{ name: '🛰️ Tool', value: '`' + (toolName || interaction.commandName || 'Argus') + '`', inline: true }],
     footer: ARGUS_FOOTER()
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
