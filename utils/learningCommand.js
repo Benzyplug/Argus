@@ -24,5 +24,24 @@ const CONTENT={
  'how-it-works':'Learn the components, data flow, trust boundaries, common failure modes, and defensive uses. Keep experiments inside systems you own or are authorized to test.',
  'build-your-own':'Define the project goal, inputs, architecture, validation rules, error handling, logging, rate limits, tests, and a small safe MVP before adding integrations.'
 };
-function build(name){const d=DATA[name];return{data:new SlashCommandBuilder().setName(name).setDescription(d[0]+' — '+d[1]),async execute(i){const m=new ModalBuilder().setCustomId('argus:'+name+':modal').setTitle(d[0].slice(0,45));m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('topic').setLabel(d[2]).setPlaceholder(d[3]).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(200)));return safeShowModal(i,m)},async handleInteraction(i){const id=i.customId||'';if(id!=='argus:'+name+':modal'&&id!=='argus:'+name+':actions')return false;if(id.endsWith(':actions')){if(i.values&&i.values[0]==='again')return this.execute(i);if(i.values&&i.values[0]==='help'){await i.reply({content:'Use /help to browse Argus.',ephemeral:true});return true}return false}const topic=i.fields.getTextInputValue('topic');await i.deferReply();const embed=createArgusEmbed({title:d[0],description:'**'+topic+'**\n\n'+CONTENT[name]+'\n\n> Educational guidance only. Use authorized systems and public/lab data.',color:0x5865F2,fields:[{name:'⌁ What next',value:'Refine the topic, compare sources, and document your reasoning.'}]},{commandName:name});const menu=createSelectMenu('argus:'+name+':actions','What next?',[{label:'Run again',value:'again',description:'Try another topic'},{label:'View Argus help',value:'help',description:'Open Argus help'}]);await i.editReply({embeds:[embed],components:[menu]});return true}}}
+function build(name){
+ const d=DATA[name];
+ return {
+  data:new SlashCommandBuilder().setName(name).setDescription(d[0]+' — '+d[1]),
+  async execute(i){
+   const m=new ModalBuilder().setCustomId('argus:'+name+':modal').setTitle(d[0].replace(/^[^\\s]+\\s*/,'').slice(0,45));
+   m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('topic').setLabel(d[2]).setPlaceholder(d[3]).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(200)));
+   return safeShowModal(i,m);
+  },
+  async handleInteraction(i){
+   if(i.customId!=='argus:'+name+':modal') return false;
+   const topic=String(i.fields.getTextInputValue('topic')||'').trim();
+   if(!topic){await i.reply({content:'A topic is required.',ephemeral:true});return true;}
+   await i.deferReply();
+   const embed=createArgusEmbed({title:d[0],description:'**'+topic+'**\\n\\n'+CONTENT[name]+'\\n\\n> Educational guidance only. Use authorized systems and public/lab data.',color:0x5865F2},{commandName:name});
+   await i.editReply({embeds:[embed]});
+   return true;
+  }
+ };
+}
 module.exports={build};
