@@ -12,11 +12,15 @@ function baseError(title, description, fields = [], color = ERROR_COLOR) {
 }
 
 function invalidInput(input, expected = 'valid input', provided = input, title = 'Invalid input') {
+  const example = /email/i.test(expected)
+    ? 'name@example.com'
+    : expected.replace(/^a valid /i, '').replace(/[.]+$/, '');
+
   return baseError(
     title,
     'The provided value is not valid.\n\n' +
       '**Provided:** `' + String(provided ?? 'N/A').slice(0, 900) + '`\n' +
-      '**Example:** `' + expected.replace(/^a valid /i, '').replace(/[.]+$/, '') + '`',
+      '**Example:** `' + example + '`',
     []
   );
 }
