@@ -62,7 +62,7 @@ npm start
 
 ## ⌘ Command Surface
 
-Argus uses an interactive `/help` command with category filtering and command search.
+Argus currently exposes **32 focused slash commands** through an interactive `/help` command with category filtering and command search.
 
 ### 🎖 Rankings
 
@@ -93,6 +93,7 @@ Argus uses an interactive `/help` command with category filtering and command se
 
 - `/airport`
 - `/flight`
+- `/flight-number`
 - `/vehicle`
 - `/vessel`
 
