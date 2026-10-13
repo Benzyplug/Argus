@@ -159,11 +159,68 @@ async function markShuttingDown() {
     await writeNow();
 }
 
+
+
+const os = require('node:os');
+const { execFile } = require('node:child_process');
+
+function formatUptime(seconds) {
+    const s = Math.max(0, Math.floor(Number(seconds) || 0));
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return [d ? d + 'd' : '', h ? h + 'h' : '', m ? m + 'm' : '', sec + 's'].filter(Boolean).join(' ');
+}
+
+function checkTool(command) {
+    return new Promise(resolve => {
+        const p = execFile(command, ['--version'], { timeout: 2500 }, error => resolve(!error));
+        p.on('error', () => resolve(false));
+    });
+}
+
+async function gatherHealthData(detailed = false, checkApis = false, checkTools = false, client = null) {
+    const started = Date.now();
+    const connected = Boolean(client?.isReady?.());
+    const ping = Number.isFinite(client?.ws?.ping) && client.ws.ping >= 0 ? client.ws.ping : null;
+    const memory = process.memoryUsage();
+    const system = {
+        platform: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version,
+        uptime: process.uptime(),
+        memory: { used: memory },
+        cpu: detailed ? { cores: os.cpus().length, loadAvg: os.loadavg() } : null,
+        tempDir: detailed ? { exists: fsSync.existsSync(path.join(process.cwd(), 'temp')) } : null
+    };
+    const apis = {};
+    if (checkApis) {
+        const envs = [
+            ['DNSDumpster', 'DNSDUMPSTER_TOKEN'], ['Whoxy', 'WHOXY_API_KEY'], ['Host.io', 'HOSTIO_API_KEY'],
+            ['AviationStack', 'AVIATIONSTACK_API_KEY'], ['AirportDB', 'AIRPORTDB_API_KEY'], ['Pappers', 'PAPPERS_API_KEY'],
+            ['AI', 'AI_API_KEY'], ['VirusTotal', 'VIRUSTOTAL_API_KEY'], ['Etherscan', 'ETHERSCAN_API_KEY'],
+            ['BscScan', 'BSCSCAN_API_KEY'], ['PolygonScan', 'POLYGONSCAN_API_KEY']
+        ];
+        for (const [name, key] of envs) apis[name] = process.env[key] ? { status: 'configured' } : { status: 'degraded', reason: 'not configured' };
+    }
+    const tools = {};
+    if (checkTools) {
+        const specs = [['ExifTool', process.env.EXIFTOOL_PATH || 'exiftool'], ['Sherlock', process.env.SHERLOCK_PATH || 'sherlock'], ['Maigret', process.env.MAIGRET_PATH || 'maigret'], ['Nuclei', process.env.NUCLEI_PATH || 'nuclei']];
+        for (const [name, command] of specs) tools[name] = { available: await checkTool(command), command };
+    }
+    const issues = [];
+    if (!connected) issues.push('Discord disconnected');
+    if (checkApis) for (const [name, item] of Object.entries(apis)) if (item.status !== 'configured') issues.push(name + ' not configured');
+    if (checkTools) for (const [name, item] of Object.entries(tools)) if (!item.available) issues.push(name + ' unavailable');
+    const score = Math.max(0, 100 - (connected ? 0 : 50) - (checkApis ? Object.values(apis).filter(x => x.status !== 'configured').length * 3 : 0) - (checkTools ? Object.values(tools).filter(x => !x.available).length * 5 : 0));
+    return { overall: { status: score >= 90 ? 'healthy' : score >= 60 ? 'degraded' : 'unhealthy', score, issues }, discord: { connected, ping }, system, apis: checkApis ? apis : null, tools: checkTools ? tools : null, processingTime: Date.now() - started };
+}
+
 module.exports = {
     startHealthWriter,
     stopHealthWriter,
     markReady,
     markShuttingDown,
     writeNow,
-    writeStartingState
+    writeStartingState,
+    gatherHealthData,
+    formatUptime
 };
