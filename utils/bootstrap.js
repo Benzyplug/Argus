@@ -18,8 +18,6 @@ const EXCLUDED_COMMAND_NAMES = new Set([
 ]);
 
 const COMMAND_METADATA = Object.freeze({
-    'airport.js': { name: 'airport', description: 'Look up an airport by code or name.' },
-    'aviation.js': { name: 'flight', description: 'Track a flight and view current aviation details.' },
     'blockchain.js': { name: 'blockchain', description: 'Inspect a cryptocurrency address and blockchain data.' },
     'blockchain-detect.js': { name: 'crypto-detect', description: 'Identify the blockchain or cryptocurrency used by an address.' },
     'chat.js': { name: 'ai', description: 'Chat with Argus AI.' },
@@ -28,7 +26,6 @@ const COMMAND_METADATA = Object.freeze({
     'exif.js': { name: 'exif', description: 'Extract metadata from an image or file.' },
     'extract-links.js': { name: 'extract-links', description: 'Extract links and URLs from a webpage.' },
     'favicons.js': { name: 'favicon', description: 'Analyze a website favicon for reconnaissance.' },
-    'flight-number.js': { name: 'flight-number', description: 'Look up information for a flight number.' },
     'generate-usernames.js': { name: 'username-gen', description: 'Generate username ideas from a name or keyword.' },
     'ghunt.js': { name: 'google-investigate', description: 'Investigate a Google account with available OSINT data.' },
     'help.js': { name: 'help', description: 'Show all Argus commands and what they do.' },
@@ -37,15 +34,12 @@ const COMMAND_METADATA = Object.freeze({
     'linkook.js': { name: 'link-check', description: 'Analyze a URL and check its links and details.' },
     'maigret.js': { name: 'maigret', description: 'Search for a username across online services.' },
     'monitor.js': { name: 'monitor', description: 'Monitor a target for changes and activity.' },
-    'nike.js': { name: 'nike', description: 'Search Nike product and release information.' },
     'nuclei.js': { name: 'nuclei-scan', description: 'Scan a target for known security findings with Nuclei.' },
     'recon-web.js': { name: 'web-recon', description: 'Run reconnaissance checks against a website.' },
     'redirect-chain.js': { name: 'redirect-check', description: 'Trace a URL redirect chain and final destination.' },
     'rekognition.js': { name: 'image-ai', description: 'Analyze an image with AI-powered image recognition.' },
     'sherlock.js': { name: 'sherlock', description: 'Search for a username across social platforms.' },
     'upload.js': { name: 'upload', description: 'Upload a file for Argus analysis.' },
-    'vessels.js': { name: 'vessel', description: 'Look up vessel and maritime information.' },
-    'vpic.js': { name: 'vehicle', description: 'Look up vehicle information by VIN.' },
     'whoxy.js': { name: 'whois', description: 'Look up domain registration and WHOIS information.' },
     'xeuledoc.js': { name: 'doc-meta', description: 'Inspect document metadata and properties.' }
 });
