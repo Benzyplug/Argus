@@ -28,5 +28,29 @@ async function lookup(name,target){
  if(name==='avatar-search'){return{title,description:desc,fields:[{name:'🖼️ Public avatar sources',value:'• https://unavatar.io/'+encodeURIComponent(clean)+'\n• https://avatar.vercel.sh/'+encodeURIComponent(clean)+'.png'},{name:'ℹ️ Note',value:'Availability depends on the username/provider.'}]};}
  return{title,description:desc,fields:[{name:'🎯 Target',value:'`'+esc(clean)+'`'}]};
 }
-function build(name){const meta=META[name],title=meta[0],description=meta[1],kind=meta[2];const spec=inputSpec(kind);return{data:new SlashCommandBuilder().setName(name).setDescription(description),async execute(interaction){const modal=new ModalBuilder().setCustomId('argus:'+name+':modal').setTitle(title.slice(0,45));modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('target').setLabel(spec[0]).setPlaceholder(spec[1]).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(254)));return safeShowModal(interaction,modal)},async handleInteraction(interaction){const id=interaction.customId||'';if(id!=='argus:'+name+':modal'&&id!=='argus:'+name+':actions')return false;if(id.endsWith(':actions')){if(interaction.values&&interaction.values[0]==='again')return this.execute(interaction);if(interaction.values&&interaction.values[0]==='help'){await interaction.reply({content:'Use `/help` to browse Argus capabilities.',ephemeral:true});return true}return false}const target=interaction.fields&&interaction.fields.getTextInputValue('target');if(!target){await interaction.reply({content:'A target is required.',ephemeral:true});return true}await interaction.deferReply();try{const result=await lookup(name,target.trim());const embed=createArgusEmbed({title:result.title,description:result.description,color:0x5865F2,fields:result.fields},{commandName:name});const menu=createSelectMenu('argus:'+name+':actions','What next?',[{label:'Run again',value:'again',description:'Run this lookup again'},{label:'View Argus help',value:'help',description:'Open Argus help'}]);await interaction.editReply({embeds:[embed],components:[menu]})}catch(error){await interaction.editReply({embeds:[createArgusEmbed({title:'❌ Lookup failed',description:'The lookup could not be completed. Check the configured service/tool and try again.',color:0xED4245,fields:[{name:'Details',value:esc(error.message||'Unknown error')}]},{commandName:name})]})}return true}}}
+function build(name){
+ const meta=META[name],title=meta[0],description=meta[1],kind=meta[2],spec=inputSpec(kind);
+ return {
+  data:new SlashCommandBuilder().setName(name).setDescription(description),
+  async execute(interaction){
+   const modal=new ModalBuilder().setCustomId('argus:'+name+':modal').setTitle(title.replace(/^[^\\s]+\\s*/,'').slice(0,45));
+   modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('target').setLabel(spec[0]).setPlaceholder(spec[1]).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(254)));
+   return safeShowModal(interaction,modal);
+  },
+  async handleInteraction(interaction){
+   if(interaction.customId!=='argus:'+name+':modal') return false;
+   const target=String(interaction.fields.getTextInputValue('target')||'').trim();
+   if(!target){await interaction.reply({content:'A target is required.',ephemeral:true});return true;}
+   await interaction.deferReply();
+   try{
+    const result=await lookup(name,target);
+    const embed=createArgusEmbed({title:result.title,description:result.description,color:0x5865F2,fields:result.fields},{commandName:name});
+    await interaction.editReply({embeds:[embed]});
+   }catch(error){
+    await interaction.editReply({embeds:[createArgusEmbed({title:'❌ Lookup failed',description:'The lookup could not be completed. Check the configured service/tool and try again.',color:0xED4245,fields:[{name:'Details',value:esc(error.message||'Unknown error')}]},{commandName:name})]});
+   }
+   return true;
+  }
+ };
+}
 module.exports={build};
