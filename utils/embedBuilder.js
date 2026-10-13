@@ -156,16 +156,7 @@ function stylePayload(payload, context = {}) {
     result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
   }
 
-  const bannerFile = argusBannerFile();
-  if (bannerFile) {
-    const embeds = result.embeds || [];
-    if (embeds.length) {
-      const first = embeds[0] instanceof EmbedBuilder ? embeds[0] : new EmbedBuilder(embeds[0]);
-      if (!first.data.image?.url) first.setImage('attachment://banner.png');
-      result.embeds = [first, ...embeds.slice(1)];
-    }
-    result.files = [bannerFile, ...(result.files || [])];
-  }
+  // Keep normal responses clean; banners are opt-in per command.
   return result;
 }
 
