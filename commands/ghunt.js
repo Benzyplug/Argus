@@ -3,7 +3,7 @@ const { safeSpawn } = require('../utils/process');
 const { createArgusEmbed } = require('../utils/embedBuilder');
 
 const GHUNT_TIMEOUT_MS = 180000;
-const MAX_OUTPUT = 9000;
+const MAX_OUTPUT = 7500;
 
 const MODULES = Object.freeze({
     email: { args: value => ['email', value], label: 'Email' },
