@@ -18,7 +18,7 @@ async function auditCommand(client, interaction, { status='success', durationMs=
       )
       .setTimestamp();
     if (error) embed.addFields({ name:'Error', value:String(error.message || error).slice(0,1024), inline:false });
-    await channel.send({ embeds:[embed], allowedMentions:{parse:[]} });
+    const ownerMention = process.env.ARGUS_AUDIT_MENTION;\n    await channel.send({ content: ownerMention || undefined, embeds:[embed], allowedMentions: ownerMention ? { parse:['users'] } : { parse:[] } });
   } catch {}
 }
 module.exports = { auditCommand };
