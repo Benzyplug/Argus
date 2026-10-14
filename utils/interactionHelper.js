@@ -1,6 +1,6 @@
 const { MessageFlags } = require('discord.js');
 const { isInteractionValid, safeShowModal: validatedShowModal } = require('./interactionValidator');
-const { stylePayload, loadingEmbed, argusBannerFile, bannerEmbed } = require('./embedBuilder');
+const { stylePayload, loadingEmbed, argusBannerFile } = require('./embedBuilder');
 
 const componentOwners = new Map();
 
@@ -78,11 +78,10 @@ function installArgusResponses(interaction, client) {
   const context = { interaction, client, commandName };
 
   interaction.deferReply = async (options = {}) => {
+    // The loading embed itself carries the Argus banner so the response is
+    // always one embed, not a separate banner embed.
     const loading = loadingEmbed(interaction, commandName);
-    const banner = bannerEmbed({ commandName, client, interaction });
-    const payload = {
-      embeds: banner ? [banner, loading] : [loading]
-    };
+    const payload = { embeds: [loading] };
     const bannerFile = argusBannerFile();
     if (bannerFile) payload.files = [bannerFile];
     if (options.ephemeral !== undefined) payload.ephemeral = options.ephemeral;
@@ -99,7 +98,7 @@ function installArgusResponses(interaction, client) {
     if (interaction.deferred && !interaction.replied) {
       const payload = raw ? cleanOptions : sanitizeEditPayload(stylePayload(cleanOptions, context));
       const response = await originalEditReply(sanitizeEditPayload(payload));
-      await mirrorResponse(client, interaction, payload);
+      if (!shouldBePrivate(commandName)) await mirrorResponse(client, interaction, payload);
       return response;
     }
     if (interaction.replied) {
@@ -116,7 +115,7 @@ function installArgusResponses(interaction, client) {
     if (replyOptions.ephemeral === undefined && replyOptions.flags === undefined && shouldBePrivate(commandName)) replyOptions.flags = MessageFlags.Ephemeral;
     const response = await originalReply(replyOptions);
     rememberComponentOwner(response, interaction.user?.id);
-    await mirrorResponse(client, interaction, styled);
+    if (!shouldBePrivate(commandName)) await mirrorResponse(client, interaction, styled);
     return response;
   };
 
@@ -124,7 +123,7 @@ function installArgusResponses(interaction, client) {
     const styled = stylePayload(options, context);
     const response = await originalEditReply(sanitizeEditPayload(styled));
     rememberComponentOwner(response, interaction.user?.id);
-    await mirrorResponse(client, interaction, styled);
+    if (!shouldBePrivate(commandName)) await mirrorResponse(client, interaction, styled);
     return response;
   };
 
@@ -134,7 +133,7 @@ function installArgusResponses(interaction, client) {
     if (followOptions.ephemeral === undefined && followOptions.flags === undefined && shouldBePrivate(commandName)) followOptions.flags = MessageFlags.Ephemeral;
     const response = await originalFollowUp(followOptions);
     rememberComponentOwner(response, interaction.user?.id);
-    await mirrorResponse(client, interaction, styled);
+    if (!shouldBePrivate(commandName)) await mirrorResponse(client, interaction, styled);
     return response;
   };
 }
