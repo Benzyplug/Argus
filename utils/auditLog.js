@@ -17,8 +17,30 @@ async function auditCommand(client, interaction, { status='success', durationMs=
         { name:'Status', value:status, inline:true }
       )
       .setTimestamp();
-    if (error) embed.addFields({ name:'Error', value:String(error.message || error).slice(0,1024), inline:false });
-    let owner = null;\n    if (process.env.ARGUS_AUDIT_MENTION) owner = process.env.ARGUS_AUDIT_MENTION;\n    if (!owner && channel.guild?.members?.fetch) {\n      const match = channel.guild.members.cache.find(m => m.user?.username === 'Lmao_2.0') || (await channel.guild.members.search({ query:'Lmao_2.0', limit:1 }).catch(() => null))?.first();\n      if (match) owner = match;\n    }\n    await channel.send({ content: owner?.toString ? owner.toString() : owner || undefined, embeds:[embed], allowedMentions: owner?.id ? { users:[owner.id] } : { parse: owner ? ['users'] : [] } });
+
+    if (error) {
+      embed.addFields({ name:'Error', value:String(error.message || error).slice(0,1024), inline:false });
+    }
+
+    let owner = null;
+    if (process.env.ARGUS_AUDIT_MENTION) {
+      owner = process.env.ARGUS_AUDIT_MENTION;
+    }
+
+    if (!owner && channel.guild?.members?.fetch) {
+      const match =
+        channel.guild.members.cache.find(m => m.user?.username === 'Lmao_2.0') ||
+        (await channel.guild.members.search({ query:'Lmao_2.0', limit:1 }).catch(() => null))?.first();
+
+      if (match) owner = match;
+    }
+
+    await channel.send({
+      content: owner?.toString ? owner.toString() : owner || undefined,
+      embeds:[embed],
+      allowedMentions: owner?.id ? { users:[owner.id] } : { parse: owner ? ['users'] : [] }
+    });
   } catch {}
 }
+
 module.exports = { auditCommand };
