@@ -181,7 +181,8 @@ function loadingEmbed(interaction, toolName) {
     title: '⌁ Processing…',
     description: '〢 Processing your request…',
     fields: [{ name: '🛰️ Tool', value: '`' + (toolName || interaction.commandName || 'Argus') + '`', inline: true }],
-    footer: ARGUS_FOOTER()
+    footer: ARGUS_FOOTER(),
+    banner: ARGUS_BANNER_URL
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
 }
 
