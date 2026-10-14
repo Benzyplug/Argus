@@ -4,7 +4,7 @@ const path = require('node:path');
 const pkg = require('../package.json');
 
 const ARGUS_BANNER_PATH = path.join(__dirname, '..', 'banner.png');
-const ARGUS_BANNER_URL = 'https://raw.githubusercontent.com/Benzyplug/Argus/main/banner.png';
+const ARGUS_BANNER_URL = 'attachment://banner.png';
 
 function hasLocalArgusBanner() {
   try { return fs.existsSync(ARGUS_BANNER_PATH); } catch { return false; }
@@ -159,17 +159,18 @@ function stylePayload(payload, context = {}) {
     result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
   }
 
-  const banner = bannerEmbed(context);
-  const hasDedicatedBanner = Array.isArray(result.embeds) &&
-    result.embeds.some(embed =>
-      embed?.data?.image?.url === ARGUS_BANNER_URL &&
-      !embed?.data?.title &&
-      !embed?.data?.description &&
-      !(embed?.data?.fields?.length)
-    );
-
-  if (banner && !hasDedicatedBanner) {
-    result.embeds = [banner, ...(result.embeds || [])];
+  // Keep the banner INSIDE the same primary embed as the response content.
+  // This avoids the old two-embed layout where the banner appeared as a
+  // separate message block.
+  if (Array.isArray(result.embeds) && result.embeds.length) {
+    const primary = result.embeds[0];
+    const primaryJson = primary instanceof EmbedBuilder ? primary.toJSON() : primary;
+    if (!primaryJson?.image?.url) {
+      result.embeds[0] = new EmbedBuilder(primaryJson).setImage(ARGUS_BANNER_URL);
+    }
+    if (argusBannerFile() && !result.files?.some(file => file?.name === 'banner.png')) {
+      result.files = [...(result.files || []), argusBannerFile()];
+    }
   }
   return result;
 }
