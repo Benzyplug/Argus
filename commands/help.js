@@ -1,8 +1,24 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const {
+  SlashCommandBuilder,
+  ContainerBuilder,
+  MediaGalleryBuilder,
+  MediaGalleryItemBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  MessageFlags
+} = require('discord.js');
 const { ARGUS_BANNER_URL } = require('../utils/embedBuilder');
 const pkg = require('../package.json');
 const { RESTRICTED_COMMANDS } = require('../utils/permissions');
-const { createSelectMenu } = require('../utils/components');
 const { safeShowModal } = require('../utils/interactionHelper');
 
 const MENU = 'argus:help:category';
@@ -14,8 +30,7 @@ const INPUT = 'argus:help:search:query';
 const CATEGORY_RULES = [
   ['rankings','🎖 Rankings','Core Argus information', ['bot']],
   ['web','🌐 Web Intelligence','Web, domain, URL and network reconnaissance', ['dns','dork','extract-links','favicon','host-lookup','link-check','redirect-check','web-recon','whois','cert-search','subdomain-enum','wayback-history','web-tech','shodan-lookup','ip-info','ip-reputation']],
-  ['identity','🕵️ OSINT & Identity','Identity, email and public-data investigation', ['company-search','google-investigate','maigret','nike','sherlock','username-gen','avatar-search','email-breach','email-footprint']],
-  ['transport','🛰️ Transport','Airport, flight, vehicle and vessel intelligence', ['airport','flight','flight-number','vehicle','vessel']],
+  ['identity','🕵️ OSINT & Identity','Identity, email and public-data investigation', ['company-search','google-investigate','maigret','sherlock','username-gen','avatar-search','email-breach','email-footprint']],
   ['files','🧬 Files & Data','Blockchain, metadata and file analysis', ['blockchain','crypto-detect','doc-meta','exif','upload']],
   ['utilities','🤖 AI & Utilities','AI, monitoring and security utilities', ['ai','image-ai','jwt','monitor','nuclei-scan']]
 ];
@@ -35,63 +50,103 @@ function groups(client) {
     const items = names.map(n => available.get(n)).filter(Boolean);
     items.forEach(x => used.add(x.name));
     return { key,title,description,items };
-  });
+  }).filter(g => g.items.length);
   const other = [...available.values()].filter(x => !used.has(x.name)).sort((a,b) => a.name.localeCompare(b.name));
   if (other.length) result.push({ key:'other', title:'🧰 Other Operations', description:'Additional registered Argus operations', items:other });
   return result;
 }
 
-function base(client) {
-  return new EmbedBuilder().setColor(0x5865f2).setAuthor({
-    name:'ARGUS • Open Source Intelligence',
-    iconURL:client.user?.displayAvatarURL?.({extension:'png',size:128})
-  });
-}
-function finish(embed) {
-  embed.setImage(ARGUS_BANNER_URL);
-  return embed.setFooter({text:'⌬ ARGUS • v'+pkg.version+' • BY ẞ€ÑZ¥'});
-}
-function home(client) {
-  const gs=groups(client);
-  return finish(base(client).setTitle('🛡️ ARGUS Help Center').setDescription(
-    'Your open-source intelligence toolkit for discovering, investigating, and correlating public information.\n\n' +
-    '**Getting Started**\nChoose a category below to browse registered operations, or use **Find a Command** to search.\n\n' +
-    gs.map(g => g.title+'\n'+g.description).join('\n\n')
-  ));
-}
-function category(client,key) {
-  const g=groups(client).find(x=>x.key===key);
-  if(!g) return home(client);
-  const value=g.items.length ? g.items.map(x => (x.restricted?'🔒 ':'')+'**'+x.name+'** — '+x.description).join('\n') : 'No registered commands in this category.';
-  return finish(base(client).setTitle(g.title).setDescription(g.description).addFields({name:'Available commands',value:value.slice(0,1024)}));
-}
-function search(client,q) {
-  const clean=String(q||'').trim().replace(/^\//,'').toLowerCase();
-  const matches=[...commands(client).values()].filter(x => x.name.includes(clean)||x.description.toLowerCase().includes(clean)).sort((a,b)=>a.name.localeCompare(b.name)).slice(0,20);
-  const e=base(client).setTitle(matches.length?'🔎 Command Search':'❌ No Command Found').setDescription(clean?'Results for **'+clean.slice(0,100)+'**':'Enter a command name or keyword.');
-  if(matches.length)e.addFields({name:'Matches',value:matches.map(x=>(x.restricted?'🔒 ':'')+'**'+x.name+'** — '+x.description).join('\n').slice(0,1024)});
-  return finish(e);
-}
-function components(client,selected=null) {
-  const gs=groups(client);
-  return [
-    createSelectMenu(MENU,'Select a category',[{label:'All Commands',value:'all',description:'Return to the Argus Help Center',emoji:'🛡️',default:!selected},...gs.map(g=>({label:g.title.replace(/^\S+\s+/,'').slice(0,100),value:g.key,description:g.description.slice(0,100),default:selected===g.key})),{label:'Find a command…',value:'search',description:'Search by command or keyword',emoji:'🔎'}])
+function menu(client, selected=null) {
+  const options = [
+    new StringSelectMenuOptionBuilder().setLabel('All Commands').setValue('all').setDescription('Return to the Argus Help Center').setEmoji('🛡️').setDefault(!selected),
+    ...groups(client).map(g => new StringSelectMenuOptionBuilder()
+      .setLabel(g.title.replace(/^\S+\s+/,'').slice(0,100))
+      .setValue(g.key)
+      .setDescription(g.description.slice(0,100))
+      .setDefault(selected===g.key)),
+    new StringSelectMenuOptionBuilder().setLabel('Find a command…').setValue('search').setDescription('Search by command or keyword').setEmoji('🔎')
   ];
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder().setCustomId(MENU).setPlaceholder('Select a category').addOptions(options)
+  );
 }
+
 function buttons(back=false) {
   const list=[];
-  if(back)list.push(new ButtonBuilder().setCustomId(HOME).setLabel('Back').setEmoji('⬅️').setStyle(ButtonStyle.Secondary));
+  if(back) list.push(new ButtonBuilder().setCustomId(HOME).setLabel('Back').setEmoji('⬅️').setStyle(ButtonStyle.Secondary));
   list.push(new ButtonBuilder().setCustomId(SEARCH).setLabel('Find a Command').setEmoji('🔎').setStyle(ButtonStyle.Primary));
   list.push(new ButtonBuilder().setLabel('Report Bug').setURL('https://github.com/Benzyplug/Argus/issues').setStyle(ButtonStyle.Link));
-  return [new ActionRowBuilder().addComponents(list)];
+  return new ActionRowBuilder().addComponents(list);
 }
-function payload(client,key=null) {
-  return {embeds:[key?category(client,key):home(client)],components:[...components(client,key),...buttons(Boolean(key))],allowedMentions:{parse:[]}};
+
+function textFor(client,key=null) {
+  const gs=groups(client);
+  if (!key) {
+    return [
+      '# 🛡️ ARGUS Help Center',
+      'Your open-source intelligence toolkit for discovering, investigating, and correlating public information.',
+      '',
+      '### Getting Started',
+      'Choose a category below to browse registered operations, or use **Find a Command** to search.',
+      '',
+      ...gs.flatMap(g => ['### '+g.title, g.description, ''])
+    ].join('\n').slice(0,4000);
+  }
+  const g=gs.find(x=>x.key===key);
+  if(!g) return textFor(client);
+  return [
+    '# '+g.title,
+    g.description,
+    '',
+    '### Available commands',
+    ...g.items.map(x => (x.restricted?'🔒 ':'')+'**'+x.name+'** — '+x.description)
+  ].join('\n').slice(0,4000);
 }
+
+function searchText(client,q) {
+  const clean=String(q||'').trim().replace(/^\//,'').toLowerCase();
+  const matches=[...commands(client).values()]
+    .filter(x => x.name.includes(clean)||x.description.toLowerCase().includes(clean))
+    .sort((a,b)=>a.name.localeCompare(b.name)).slice(0,20);
+  if(!matches.length) return '# ❌ No Command Found\nNo command matched **'+clean.slice(0,100)+'**.';
+  return ['# 🔎 Command Search','Results for **'+clean.slice(0,100)+'**','',...matches.map(x=>(x.restricted?'🔒 ':'')+'**'+x.name+'** — '+x.description)].join('\n').slice(0,4000);
+}
+
+function container(client, key=null, searchQuery=null) {
+  const body = searchQuery === null ? textFor(client,key) : searchText(client,searchQuery);
+  const c = new ContainerBuilder()
+    .setAccentColor(0x5865f2)
+    .addMediaGalleryComponents(
+      new MediaGalleryBuilder().addItems(
+        new MediaGalleryItemBuilder().setURL(ARGUS_BANNER_URL).setDescription('ARGUS')
+      )
+    )
+    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
+    .addTextDisplayComponents(new TextDisplayBuilder().setContent(body))
+    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
+    .addActionRowComponents(menu(client,key))
+    .addActionRowComponents(buttons(Boolean(key)))
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('-# ⌬ ARGUS • v'+pkg.version+' • BY ẞ€ÑZ¥')
+    );
+  return c;
+}
+
+function payload(client,key=null,searchQuery=null) {
+  return {
+    components:[container(client,key,searchQuery)],
+    flags: MessageFlags.IsComponentsV2,
+    allowedMentions:{parse:[]},
+    __argusRaw:true
+  };
+}
+
 function modal() {
-  return new ModalBuilder().setCustomId(MODAL).setTitle('Find an Argus command').addComponents(new ActionRowBuilder().addComponents(
-    new TextInputBuilder().setCustomId(INPUT).setLabel('Command name or keyword').setPlaceholder('Example: dns, email, reconnaissance').setStyle(TextInputStyle.Short).setMaxLength(50).setRequired(true)
-  ));
+  return new ModalBuilder().setCustomId(MODAL).setTitle('Find an Argus command').addComponents(
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder().setCustomId(INPUT).setLabel('Command name or keyword').setPlaceholder('Example: dns, email, reconnaissance').setStyle(TextInputStyle.Short).setMaxLength(50).setRequired(true)
+    )
+  );
 }
 
 module.exports={
@@ -106,7 +161,7 @@ module.exports={
     if(i.isButton()&&i.customId===SEARCH){await safeShowModal(i,modal());return true;}
     if(i.isButton()&&i.customId===HOME){await i.update(payload(i.client));return true;}
     if(i.isModalSubmit()&&i.customId===MODAL){
-      await i.reply({embeds:[search(i.client,i.fields.getTextInputValue(INPUT))]});
+      await i.reply(payload(i.client,null,i.fields.getTextInputValue(INPUT)));
       return true;
     }
     return false;
