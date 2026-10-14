@@ -1,6 +1,6 @@
 const { MessageFlags } = require('discord.js');
 const { isInteractionValid, safeShowModal: validatedShowModal } = require('./interactionValidator');
-const { stylePayload, loadingEmbed } = require('./embedBuilder');
+const { stylePayload, loadingEmbed, argusBannerFile, bannerEmbed } = require('./embedBuilder');
 
 const componentOwners = new Map();
 
@@ -65,7 +65,12 @@ function installArgusResponses(interaction, client) {
 
   interaction.deferReply = async (options = {}) => {
     const loading = loadingEmbed(interaction, commandName);
-    const payload = { embeds: [loading] };
+    const banner = bannerEmbed({ commandName, client, interaction });
+    const payload = {
+      embeds: banner ? [banner, loading] : [loading]
+    };
+    const bannerFile = argusBannerFile();
+    if (bannerFile) payload.files = [bannerFile];
     if (options.ephemeral !== undefined) payload.ephemeral = options.ephemeral;
     else payload.flags = MessageFlags.Ephemeral;
     if (options.flags !== undefined) payload.flags = options.flags;
