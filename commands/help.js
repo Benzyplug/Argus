@@ -137,6 +137,7 @@ function payload(client,key=null,searchQuery=null) {
     components:[container(client,key,searchQuery)],
     flags: MessageFlags.IsComponentsV2,
     allowedMentions:{parse:[]},
+    files: argusBannerFile() ? [argusBannerFile()] : [],
     __argusRaw:true
   };
 }
