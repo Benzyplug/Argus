@@ -4,6 +4,7 @@ const path = require('node:path');
 const pkg = require('../package.json');
 
 const ARGUS_BANNER_PATH = path.join(__dirname, '..', 'banner.png');
+const ARGUS_BANNER_URL = 'https://raw.githubusercontent.com/Benzyplug/Argus/main/banner.png';
 
 function hasLocalArgusBanner() {
   try { return fs.existsSync(ARGUS_BANNER_PATH); } catch { return false; }
@@ -129,10 +130,9 @@ function styleEmbed(input, context = {}) {
 }
 
 function bannerEmbed(context = {}) {
-  if (!hasLocalArgusBanner()) return null;
   return new EmbedBuilder()
     .setColor(COLORS[categoryFor(context.commandName)] ?? COLORS.general)
-    .setImage('attachment://banner.png');
+    .setImage(ARGUS_BANNER_URL);
 }
 
 function stylePayload(payload, context = {}) {
@@ -159,23 +159,17 @@ function stylePayload(payload, context = {}) {
     result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
   }
 
-  if (hasLocalArgusBanner()) {
-    const files = Array.isArray(result.files) ? [...result.files] : [];
-    if (!files.some(file => file?.name === 'banner.png')) files.push(argusBannerFile());
-    result.files = files.filter(Boolean);
+  const banner = bannerEmbed(context);
+  const hasDedicatedBanner = Array.isArray(result.embeds) &&
+    result.embeds.some(embed =>
+      embed?.data?.image?.url === ARGUS_BANNER_URL &&
+      !embed?.data?.title &&
+      !embed?.data?.description &&
+      !(embed?.data?.fields?.length)
+    );
 
-    const banner = bannerEmbed(context);
-    const hasDedicatedBanner = Array.isArray(result.embeds) &&
-      result.embeds.some(embed =>
-        embed?.data?.image?.url === 'attachment://banner.png' &&
-        !embed?.data?.title &&
-        !embed?.data?.description &&
-        !(embed?.data?.fields?.length)
-      );
-
-    if (banner && !hasDedicatedBanner) {
-      result.embeds = [banner, ...(result.embeds || [])];
-    }
+  if (banner && !hasDedicatedBanner) {
+    result.embeds = [banner, ...(result.embeds || [])];
   }
   return result;
 }
@@ -190,4 +184,4 @@ function loadingEmbed(interaction, toolName) {
   }, { interaction, commandName: interaction.commandName, client: interaction.client });
 }
 
-module.exports = { COLORS, ERROR_COLOR, ARGUS_FOOTER, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner, bannerEmbed, argusBannerFile };
+module.exports = { ARGUS_BANNER_URL, COLORS, ERROR_COLOR, ARGUS_FOOTER, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner, bannerEmbed, argusBannerFile };
