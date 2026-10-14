@@ -108,13 +108,13 @@ function searchText(client,q) {
 
 function helpEmbed(client, key=null, searchQuery=null) {
   const body = searchQuery === null ? textFor(client,key) : searchText(client,searchQuery);
-  const lines = body.split('\\n');
+  const lines = body.split('\n');
   const title = lines.shift() || '🛡️ ARGUS Help Center';
-  const description = lines.join('\\n').slice(0, 4096);
+  const description = lines.join('\n').slice(0, 4096);
 
   return new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle(title.replace(/^#\\s*/, '').slice(0, 256))
+    .setTitle(title.replace(/^#\s*/, '').slice(0, 256))
     .setDescription(description)
     .setImage('attachment://banner.png')
     .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY ẞ€ÑZ¥' });
