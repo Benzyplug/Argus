@@ -122,7 +122,6 @@ function styleEmbed(input, context = {}) {
   if (title && !/^[✅❌⚠️]/.test(title)) embed.setTitle(title.slice(0, 256));
   let fields = decorateFields([...(json.fields || [])]);
   if (isError && fields.length < 25) fields.push({ name: '🆘 Support', value: process.env.SUPPORT_URL || 'https://github.com/Benzyplug/Argus/issues', inline: false });
-  if (!json.image?.url && hasLocalArgusBanner()) embed.setImage('attachment://banner.png');
   delete embed.data.timestamp;
   embed.setFields(fields.slice(0, 25));
   if (!json.footer?.text) embed.setFooter({ text: ARGUS_FOOTER() });
@@ -166,12 +165,15 @@ function stylePayload(payload, context = {}) {
     result.files = files.filter(Boolean);
 
     const banner = bannerEmbed(context);
-    const hasBanner = Array.isArray(result.embeds) &&
-      result.embeds.some(embed => embed?.data?.image?.url === 'attachment://banner.png');
+    const hasDedicatedBanner = Array.isArray(result.embeds) &&
+      result.embeds.some(embed =>
+        embed?.data?.image?.url === 'attachment://banner.png' &&
+        !embed?.data?.title &&
+        !embed?.data?.description &&
+        !(embed?.data?.fields?.length)
+      );
 
-    if (banner && !hasBanner) {
-      // Discord renders embed images in the embed body; putting the banner in
-      // its own first embed makes it a true visual header for the message.
+    if (banner && !hasDedicatedBanner) {
       result.embeds = [banner, ...(result.embeds || [])];
     }
   }
