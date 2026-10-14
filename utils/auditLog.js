@@ -2,7 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 
 const OWNER_NAME = 'Lmao_2.0';
 
-async function findOwner(channel, client) {
+async function findOwner(channel, client, interactionGuildId) {
   const configured = String(process.env.ARGUS_AUDIT_MENTION || '').trim();
   if (configured) {
     const id = configured.match(/^(?:<@!?(\d+)>|(\d+))$/);
@@ -18,15 +18,21 @@ async function findOwner(channel, client) {
   );
   if (cached) return cached;
 
-  const guild = channel?.guild;
-  if (!guild?.members?.search) return null;
+  const guilds = [channel?.guild, client.guilds.cache.get(interactionGuildId)].filter(Boolean);
 
-  const members = await guild.members.search({ query: OWNER_NAME, limit: 10 }).catch(() => null);
-  return members?.find(member =>
-    member.user?.username === OWNER_NAME ||
-    member.user?.globalName === OWNER_NAME ||
-    member.nickname === OWNER_NAME
-  )?.user || null;
+  for (const guild of guilds) {
+    if (!guild.members?.search) continue;
+    const members = await guild.members.search({ query: OWNER_NAME, limit: 25 }).catch(() => null);
+    const match = members?.find(member =>
+      member.user?.username === OWNER_NAME ||
+      member.user?.globalName === OWNER_NAME ||
+      member.displayName === OWNER_NAME ||
+      member.nickname === OWNER_NAME
+    );
+    if (match?.user) return match.user;
+  }
+
+  return null;
 }
 
 async function auditCommand(client, interaction, { status='success', durationMs=null, error=null } = {}) {
@@ -53,7 +59,7 @@ async function auditCommand(client, interaction, { status='success', durationMs=
       embed.addFields({ name:'Error', value:String(error.message || error).slice(0,1024), inline:false });
     }
 
-    const owner = await findOwner(channel, client);
+    const owner = await findOwner(channel, client, interaction.guild?.id);
     const mention = owner ? '<@' + owner.id + '>' : null;
 
     await channel.send({
