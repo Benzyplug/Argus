@@ -16,7 +16,7 @@ const {
   TextInputStyle,
   MessageFlags
 } = require('discord.js');
-const { ARGUS_BANNER_URL } = require('../utils/embedBuilder');
+const { ARGUS_BANNER_URL, argusBannerFile } = require('../utils/embedBuilder');
 const pkg = require('../package.json');
 const { RESTRICTED_COMMANDS } = require('../utils/permissions');
 const { safeShowModal } = require('../utils/interactionHelper');
@@ -118,7 +118,7 @@ function container(client, key=null, searchQuery=null) {
     .setAccentColor(0x5865f2)
     .addMediaGalleryComponents(
       new MediaGalleryBuilder().addItems(
-        new MediaGalleryItemBuilder().setURL(ARGUS_BANNER_URL).setDescription('ARGUS')
+        new MediaGalleryItemBuilder().setURL('attachment://banner.png').setDescription('ARGUS')
       )
     )
     .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
