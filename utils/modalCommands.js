@@ -5,6 +5,47 @@ const PREFIX = 'argus:auto:';
 function schema(command) { return command?.data?.toJSON ? command.data.toJSON() : null; }
 function modalId(name) { return PREFIX + name; }
 
+function friendlyLabel(option) {
+  const name = String(option?.name || '').toLowerCase();
+  const labels = {
+    detailed: 'System information level',
+    'check-apis': 'API integration checks',
+    'check-tools': 'External tool checks',
+    query: 'What should Argus investigate?',
+    type: 'Investigation type',
+    email: 'Email address to investigate',
+    username: 'Username to investigate',
+    domain: 'Domain to investigate',
+    url: 'Website or URL to investigate',
+    target: 'Target to investigate',
+    ip: 'IP address to investigate',
+    address: 'Address to investigate',
+    wallet: 'Wallet address to investigate',
+    chain: 'Blockchain network',
+    amount: 'Amount to check',
+    page: 'Page or result number',
+    limit: 'Maximum results',
+    format: 'Output format'
+  };
+  if (labels[name]) return labels[name];
+  return String(option?.name || 'Input')
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+    .slice(0, 45);
+}
+
+function friendlyPlaceholder(option, choices, hint) {
+  const name = String(option?.name || '').toLowerCase();
+  if (choices) return choices;
+  if (name === 'detailed') return 'Choose: yes for system details, no for the basic bot status';
+  if (name === 'check-apis') return 'Choose: yes to test configured API connections, no to skip';
+  if (name === 'check-tools') return 'Choose: yes to check installed OSINT tools, no to skip';
+  if (hint) return hint;
+  return String(option?.description || ('Enter ' + String(option?.name || 'value')))
+    .replace(/\s+/g, ' ')
+    .slice(0, 100);
+}
+
 function parsePacked(value) {
   const out = {};
   for (const line of String(value || '').split(/\r?\n/)) {
@@ -26,13 +67,13 @@ function buildAutoModal(command) {
   if (options.length <= 5) {
     for (const o of options) {
       const choices = Array.isArray(o.choices) && o.choices.length
-        ? 'Choices: ' + o.choices.map(c => c.name).join(', ')
+        ? 'Choose from: ' + o.choices.map(c => c.name).join(' • ')
         : '';
-      const hint = o.type === 5 ? 'true / false' : (o.type === 4 || o.type === 10 ? 'Enter a number' : '');
+      const hint = o.type === 5 ? 'Enter yes or no' : (o.type === 4 || o.type === 10 ? 'Enter a number' : '');
       const input = new TextInputBuilder()
         .setCustomId(o.name)
-        .setLabel(String(o.name).replace(/[-_]/g, ' ').slice(0, 45))
-        .setPlaceholder((choices || hint || o.description || ('Enter ' + o.name)).slice(0, 100))
+        .setLabel(friendlyLabel(o))
+        .setPlaceholder(friendlyPlaceholder(o, choices, hint))
         .setStyle(TextInputStyle.Short)
         .setRequired(Boolean(o.required));
       if (o.min_length != null) input.setMinLength(o.min_length);
@@ -42,8 +83,8 @@ function buildAutoModal(command) {
   } else {
     const input = new TextInputBuilder()
       .setCustomId('__packed')
-      .setLabel('Command options')
-      .setPlaceholder('name=value, one per line')
+      .setLabel('Command information')
+      .setPlaceholder('Enter each requested value as name=value, one per line')
       .setStyle(TextInputStyle.Paragraph)
       .setRequired(true)
       .setMaxLength(4000);
