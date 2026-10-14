@@ -3,6 +3,38 @@ const { isInteractionValid, safeShowModal: validatedShowModal } = require('./int
 const { stylePayload, loadingEmbed } = require('./embedBuilder');
 
 const componentOwners = new Map();
+
+const RESPONSE_LOG_CHANNEL_ID = '1555368259849560104';
+
+function cloneForResponseLog(payload) {
+  if (typeof payload === 'string') return { content: payload };
+  if (!payload || typeof payload !== 'object') return null;
+
+  const copy = {};
+  if (payload.content) copy.content = payload.content;
+  if (payload.embeds?.length) copy.embeds = payload.embeds;
+  if (payload.files?.length) copy.files = payload.files;
+
+  // Components are intentionally omitted so controls cannot be used from the log channel.
+  return copy.content || copy.embeds?.length || copy.files?.length ? copy : null;
+}
+
+async function mirrorResponse(client, interaction, payload) {
+  try {
+    if (!client || interaction?.channelId === RESPONSE_LOG_CHANNEL_ID) return;
+    const copy = cloneForResponseLog(payload);
+    if (!copy) return;
+
+    const channel = client.channels.cache.get(RESPONSE_LOG_CHANNEL_ID)
+      || await client.channels.fetch(RESPONSE_LOG_CHANNEL_ID).catch(() => null);
+    if (!channel?.isTextBased?.()) return;
+
+    await channel.send(copy);
+  } catch (error) {
+    console.error('[ARGUS RESPONSE LOG]', error?.message || error);
+  }
+}
+
 function rememberComponentOwner(message, userId) {
   if (!message?.id || !userId || !message.components?.length) return;
   componentOwners.set(message.id, userId);
@@ -46,7 +78,9 @@ function installArgusResponses(interaction, client) {
     if (raw) delete cleanOptions.__argusRaw;
     if (interaction.deferred && !interaction.replied) {
       const payload = raw ? cleanOptions : sanitizeEditPayload(stylePayload(cleanOptions, context));
-      return originalEditReply(sanitizeEditPayload(payload));
+      const response = await originalEditReply(sanitizeEditPayload(payload));
+      await mirrorResponse(client, interaction, payload);
+      return response;
     }
     if (interaction.replied) {
       const styledFollow = raw ? cleanOptions : stylePayload(cleanOptions, context);
@@ -54,6 +88,7 @@ function installArgusResponses(interaction, client) {
       if (followOptions.ephemeral === undefined && followOptions.flags === undefined) followOptions.flags = MessageFlags.Ephemeral;
       const response = await originalFollowUp(followOptions);
       rememberComponentOwner(response, interaction.user?.id);
+      await mirrorResponse(client, interaction, styledFollow);
       return response;
     }
     const styled = raw ? cleanOptions : stylePayload(cleanOptions, context);
@@ -61,12 +96,15 @@ function installArgusResponses(interaction, client) {
     if (replyOptions.ephemeral === undefined && replyOptions.flags === undefined) replyOptions.flags = MessageFlags.Ephemeral;
     const response = await originalReply(replyOptions);
     rememberComponentOwner(response, interaction.user?.id);
+    await mirrorResponse(client, interaction, styled);
     return response;
   };
 
   interaction.editReply = async (options = {}) => {
-    const response = await originalEditReply(sanitizeEditPayload(stylePayload(options, context)));
+    const styled = stylePayload(options, context);
+    const response = await originalEditReply(sanitizeEditPayload(styled));
     rememberComponentOwner(response, interaction.user?.id);
+    await mirrorResponse(client, interaction, styled);
     return response;
   };
 
@@ -76,6 +114,7 @@ function installArgusResponses(interaction, client) {
     if (followOptions.ephemeral === undefined && followOptions.flags === undefined) followOptions.flags = MessageFlags.Ephemeral;
     const response = await originalFollowUp(followOptions);
     rememberComponentOwner(response, interaction.user?.id);
+    await mirrorResponse(client, interaction, styled);
     return response;
   };
 }
