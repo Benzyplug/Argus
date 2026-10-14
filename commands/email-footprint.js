@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { spawn } = require('node:child_process');
-const { createArgusEmbed } = require('../utils/embedBuilder');
+const { createArgusEmbed, COLORS } = require('../utils/embedBuilder');
 const { EMOJI } = require('../utils/emojis');
 const { createSelectMenu } = require('../utils/components');
 const { safeShowModal } = require('../utils/interactionHelper');
