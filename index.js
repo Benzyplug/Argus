@@ -320,6 +320,23 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 
+    // Auto-generated command modals replace slash-command option menus.
+    if (isAutoModal(interaction)) {
+        const autoName = commandNameFromModal(interaction);
+        const autoCommand = client.commands.get(autoName);
+        if (!autoCommand) return;
+        try {
+            const values = valuesFromModal(interaction, autoCommand);
+            Object.defineProperty(interaction, 'commandName', { configurable: true, value: autoName });
+            Object.defineProperty(interaction, 'options', { configurable: true, value: makeOptions(values, autoCommand, client) });
+            await autoCommand.execute(interaction);
+        } catch (error) {
+            void auditCommand(client, interaction, { status: 'error', error });
+            await handleInteractionError(interaction, error, { command: autoName });
+        }
+        return;
+    }
+
     // Route native component/modal interactions to the command that owns them.
     if (!interaction.isChatInputCommand()) {
         for (const command of client.commands.values()) {
@@ -364,6 +381,17 @@ client.on(Events.InteractionCreate, async interaction => {
         } catch {
             return;
         }
+    }
+
+    const autoModal = buildAutoModal(command);
+    if (autoModal) {
+        try {
+            await interaction.showModal(autoModal);
+        } catch (error) {
+            void auditCommand(client, interaction, { status: 'error', error });
+            logger.error({ command: cmdName, err: error }, 'Failed to open command modal');
+        }
+        return;
     }
 
     const startedAt = Date.now();
