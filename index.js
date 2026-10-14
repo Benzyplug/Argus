@@ -14,6 +14,7 @@ const { pruneReports, startReportsSweep, stopReportsSweep } = require('./utils/r
 const { installArgusResponses, getComponentOwner } = require('./utils/interactionHelper');
 const { handleInteractionError } = require('./utils/errorHandler');
 const { auditCommand } = require('./utils/auditLog');
+const { buildAutoModal, valuesFromModal, makeOptions, isAutoModal, commandNameFromModal } = require('./utils/modalCommands');
 
 require('./utils/config');
 
@@ -419,10 +420,10 @@ async function startArgus() {
         throw new Error('One or more command modules failed to load');
     }
 
-    const commandPayload = [...client.commands.values()].map(command => command.data.toJSON());
+    const commandPayload = [...client.commands.values()].map(command => { const payload = command.data.toJSON(); delete payload.options; return payload; });
     bootstrap.validateCommandPayloads(commandPayload);
     console.log('[ARGUS] COMMAND VALIDATION PASSED');
-    console.log('[ARGUS] REGISTERING FULL COMMAND DEFINITIONS — including all options...');
+    console.log('[ARGUS] REGISTERING CLEAN COMMAND DEFINITIONS — command input is collected through modals...');
 
     // Register the complete command schemas once. No metadata-only registration.
     await syncApplicationCommands(commandPayload, 'full-modules');
