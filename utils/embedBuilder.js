@@ -1,4 +1,4 @@
-const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const { EmbedBuilder, AttachmentBuilder, ContainerBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, ActionRowBuilder, MessageFlags } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const pkg = require('../package.json');
@@ -135,43 +135,94 @@ function bannerEmbed(context = {}) {
     .setImage(ARGUS_BANNER_URL);
 }
 
-function stylePayload(payload, context = {}) {
-  const result = typeof payload === 'string' ? {} : { ...(payload || {}) };
 
-  if (typeof payload === 'string') {
-    const content = payload.trim();
-    const isError = /^\s*(❌|⚠️|error|failed|failure)/i.test(content);
+function embedText(embedJson) {
+  const parts = [];
+  if (embedJson.author?.name) parts.push('### ' + String(embedJson.author.name).slice(0, 256));
+  if (embedJson.title) parts.push('# ' + String(embedJson.title).slice(0, 256));
+  if (embedJson.description) parts.push(String(embedJson.description).slice(0, 4096));
+  for (const field of (embedJson.fields || []).slice(0, 25)) {
+    const name = String(field.name || 'Details').slice(0, 256);
+    const value = String(field.value || '—').slice(0, 1024);
+    parts.push('### ' + name + '\n' + value);
+  }
+  if (embedJson.footer?.text) parts.push('-# ' + String(embedJson.footer.text).slice(0, 2048));
+  return parts.filter(Boolean).join('\n\n').slice(0, 12000);
+}
+
+function actionRowsForV2(components) {
+  return (components || []).filter(component => {
+    const json = typeof component?.toJSON === 'function' ? component.toJSON() : component;
+    return json?.type === 1 && Array.isArray(json.components);
+  }).map(component => {
+    const json = typeof component?.toJSON === 'function' ? component.toJSON() : component;
+    return new ActionRowBuilder(json);
+  });
+}
+
+function buildArgusV2Payload(payload = {}, context = {}) {
+  const embeds = Array.isArray(payload.embeds) ? payload.embeds : [];
+  const content = typeof payload.content === 'string' ? payload.content.trim() : '';
+  const styledEmbeds = embeds.map(embed => styleEmbed(embed, context));
+  const sections = [];
+
+  if (content) sections.push(content.slice(0, 4000));
+  for (const embed of styledEmbeds) {
+    const text = embedText(embed.toJSON());
+    if (text) sections.push(text);
+  }
+
+  const container = new ContainerBuilder()
+    .setAccentColor(styledEmbeds[0]?.data?.color || COLORS[categoryFor(context.commandName)] || COLORS.general)
+    .addMediaGalleryComponents(
+      new MediaGalleryBuilder().addItems(
+        new MediaGalleryItemBuilder().setURL(ARGUS_BANNER_URL).setDescription('ARGUS')
+      )
+    )
+    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+
+  const body = sections.join('\n\n').trim() || '⌬ ARGUS\nProcessing your request…';
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(body.slice(0, 12000)));
+
+  const rows = actionRowsForV2(payload.components);
+  if (rows.length) {
+    container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+    for (const row of rows) container.addActionRowComponents(row);
+  }
+
+  return {
+    components: [container],
+    flags: (typeof payload.flags === 'number' ? payload.flags : 0) | MessageFlags.IsComponentsV2,
+    files: [
+      ...(Array.isArray(payload.files) ? payload.files : []),
+      ...(argusBannerFile() && !(payload.files || []).some(file => file?.name === 'banner.png') ? [argusBannerFile()] : [])
+    ],
+    allowedMentions: payload.allowedMentions
+  };
+}
+
+function stylePayload(payload, context = {}) {
+  const result = typeof payload === 'string' ? { content: payload } : { ...(payload || {}) };
+
+  if (result.__argusRaw) return result;
+
+  if (Array.isArray(result.embeds)) {
+    result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
+  } else if (typeof result.content === 'string' && result.content.trim()) {
     result.embeds = [styleEmbed({
-      title: isError ? '❌ Request failed' : '',
-      description: content.slice(0, 4096),
-      color: isError ? COLORS.error : COLORS[categoryFor(context.commandName)]
-    }, context)];
-  } else if (!Array.isArray(result.embeds) && typeof result.content === 'string' && result.content.trim()) {
-    const content = result.content.trim();
-    const isError = /^\s*(❌|⚠️|error|failed|failure)/i.test(content);
-    result.embeds = [styleEmbed({
-      title: isError ? '❌ Request failed' : '',
-      description: content.slice(0, 4096),
-      color: isError ? COLORS.error : COLORS[categoryFor(context.commandName)]
+      title: /^\s*(❌|⚠️|error|failed|failure)/i.test(result.content) ? '❌ Request failed' : '',
+      description: result.content.trim().slice(0, 4096),
+      color: COLORS[categoryFor(context.commandName)]
     }, context)];
     delete result.content;
-  } else if (Array.isArray(result.embeds)) {
-    result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
   }
 
-  // Keep the banner INSIDE the same primary embed as the response content.
-  // This avoids the old two-embed layout where the banner appeared as a
-  // separate message block.
-  if (Array.isArray(result.embeds) && result.embeds.length) {
-    const primary = result.embeds[0];
-    const primaryJson = primary instanceof EmbedBuilder ? primary.toJSON() : primary;
-    if (!primaryJson?.image?.url) {
-      result.embeds[0] = new EmbedBuilder(primaryJson).setImage(ARGUS_BANNER_URL);
-    }
-    if (argusBannerFile() && !result.files?.some(file => file?.name === 'banner.png')) {
-      result.files = [...(result.files || []), argusBannerFile()];
-    }
+  // Exact /help layout for every normal Argus response:
+  // banner first, response directly underneath, controls last.
+  if (result.embeds?.length || result.components?.length || result.content) {
+    return buildArgusV2Payload(result, context);
   }
+
   return result;
 }
 
