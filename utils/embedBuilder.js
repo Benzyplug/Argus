@@ -160,17 +160,20 @@ function stylePayload(payload, context = {}) {
     result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
   }
 
-  // Keep the banner INSIDE the same primary embed as the response content.
-  // This avoids the old two-embed layout where the banner appeared as a
-  // separate message block.
+  // Argus branding rule: every normal embed response gets banner.png.
+  // Force the banner even when a command supplied its own image so the
+  // branded header never disappears between commands.
   if (Array.isArray(result.embeds) && result.embeds.length) {
     const primary = result.embeds[0];
     const primaryJson = primary instanceof EmbedBuilder ? primary.toJSON() : primary;
-    if (!primaryJson?.image?.url) {
-      result.embeds[0] = new EmbedBuilder(primaryJson).setImage(ARGUS_BANNER_URL);
-    }
-    if (argusBannerFile() && !result.files?.some(file => file?.name === 'banner.png')) {
-      result.files = [...(result.files || []), argusBannerFile()];
+    result.embeds[0] = new EmbedBuilder(primaryJson).setImage(ARGUS_BANNER_URL);
+
+    const bannerFile = argusBannerFile();
+    if (bannerFile) {
+      result.files = [
+        ...(result.files || []).filter(file => file?.name !== 'banner.png'),
+        bannerFile
+      ];
     }
   }
   return result;
