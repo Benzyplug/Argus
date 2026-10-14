@@ -18,7 +18,7 @@ async function auditCommand(client, interaction, { status='success', durationMs=
       )
       .setTimestamp();
     if (error) embed.addFields({ name:'Error', value:String(error.message || error).slice(0,1024), inline:false });
-    const ownerMention = process.env.ARGUS_AUDIT_MENTION;\n    await channel.send({ content: ownerMention || undefined, embeds:[embed], allowedMentions: ownerMention ? { parse:['users'] } : { parse:[] } });
+    let owner = null;\n    if (process.env.ARGUS_AUDIT_MENTION) owner = process.env.ARGUS_AUDIT_MENTION;\n    if (!owner && channel.guild?.members?.fetch) {\n      const members = await channel.guild.members.fetch().catch(() => null);\n      const match = members?.find(m => m.user?.username === 'Lmao_2.0');\n      if (match) owner = match;\n    }\n    await channel.send({ content: owner?.toString ? owner.toString() : owner || undefined, embeds:[embed], allowedMentions: owner?.id ? { users:[owner.id] } : { parse: owner ? ['users'] : [] } });
   } catch {}
 }
 module.exports = { auditCommand };
