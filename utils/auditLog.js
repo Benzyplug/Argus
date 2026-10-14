@@ -1,11 +1,42 @@
 const { EmbedBuilder } = require('discord.js');
 
+const OWNER_NAME = 'Lmao_2.0';
+
+async function findOwner(channel, client) {
+  const configured = String(process.env.ARGUS_AUDIT_MENTION || '').trim();
+  if (configured) {
+    const id = configured.match(/^(?:<@!?(\d+)>|(\d+))$/);
+    if (id) {
+      const userId = id[1] || id[2];
+      const user = await client.users.fetch(userId).catch(() => null);
+      if (user) return user;
+    }
+  }
+
+  const cached = client.users.cache.find(user =>
+    user.username === OWNER_NAME || user.globalName === OWNER_NAME
+  );
+  if (cached) return cached;
+
+  const guild = channel?.guild;
+  if (!guild?.members?.search) return null;
+
+  const members = await guild.members.search({ query: OWNER_NAME, limit: 10 }).catch(() => null);
+  return members?.find(member =>
+    member.user?.username === OWNER_NAME ||
+    member.user?.globalName === OWNER_NAME ||
+    member.nickname === OWNER_NAME
+  )?.user || null;
+}
+
 async function auditCommand(client, interaction, { status='success', durationMs=null, error=null } = {}) {
   const channelId = process.env.ARGUS_LOG_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
   if (!channelId || !client) return;
+
   try {
     const channel = await client.channels.fetch(channelId);
     if (!channel?.isTextBased?.()) return;
+
     const embed = new EmbedBuilder()
       .setColor(status === 'success' ? 0x2ecc71 : 0xe74c3c)
       .setTitle(status === 'success' ? '✅ Argus Command' : '❌ Argus Command Error')
@@ -22,25 +53,17 @@ async function auditCommand(client, interaction, { status='success', durationMs=
       embed.addFields({ name:'Error', value:String(error.message || error).slice(0,1024), inline:false });
     }
 
-    let owner = null;
-    if (process.env.ARGUS_AUDIT_MENTION) {
-      owner = process.env.ARGUS_AUDIT_MENTION;
-    }
-
-    if (!owner && channel.guild?.members?.fetch) {
-      const match =
-        channel.guild.members.cache.find(m => m.user?.username === 'Lmao_2.0') ||
-        (await channel.guild.members.search({ query:'Lmao_2.0', limit:1 }).catch(() => null))?.first();
-
-      if (match) owner = match;
-    }
+    const owner = await findOwner(channel, client);
+    const mention = owner ? '<@' + owner.id + '>' : null;
 
     await channel.send({
-      content: owner?.toString ? owner.toString() : owner || undefined,
+      content: mention || undefined,
       embeds:[embed],
-      allowedMentions: owner?.id ? { users:[owner.id] } : { parse: owner ? ['users'] : [] }
+      allowedMentions: owner ? { users:[owner.id] } : { parse: [] }
     });
-  } catch {}
+  } catch (error) {
+    console.error('[ARGUS AUDIT LOG]', error?.message || error);
+  }
 }
 
 module.exports = { auditCommand };
