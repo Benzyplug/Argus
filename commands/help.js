@@ -1,11 +1,6 @@
 const {
   SlashCommandBuilder,
-  ContainerBuilder,
-  MediaGalleryBuilder,
-  MediaGalleryItemBuilder,
-  TextDisplayBuilder,
-  SeparatorBuilder,
-  SeparatorSpacingSize,
+  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -13,8 +8,7 @@ const {
   StringSelectMenuOptionBuilder,
   ModalBuilder,
   TextInputBuilder,
-  TextInputStyle,
-  MessageFlags
+  TextInputStyle
 } = require('discord.js');
 const { ARGUS_BANNER_URL, argusBannerFile } = require('../utils/embedBuilder');
 const pkg = require('../package.json');
@@ -112,33 +106,28 @@ function searchText(client,q) {
   return ['# 🔎 Command Search','Results for **'+clean.slice(0,100)+'**','',...matches.map(x=>(x.restricted?'🔒 ':'')+'**'+x.name+'** — '+x.description)].join('\n').slice(0,4000);
 }
 
-function container(client, key=null, searchQuery=null) {
+function helpEmbed(client, key=null, searchQuery=null) {
   const body = searchQuery === null ? textFor(client,key) : searchText(client,searchQuery);
-  const c = new ContainerBuilder()
-    .setAccentColor(0x5865f2)
-    .addMediaGalleryComponents(
-      new MediaGalleryBuilder().addItems(
-        new MediaGalleryItemBuilder().setURL('attachment://banner.png').setDescription('ARGUS')
-      )
-    )
-    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
-    .addTextDisplayComponents(new TextDisplayBuilder().setContent(body))
-    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
-    .addActionRowComponents(menu(client,key))
-    .addActionRowComponents(buttons(Boolean(key)))
-    .addTextDisplayComponents(
-      new TextDisplayBuilder().setContent('-# ⌬ ARGUS • v'+pkg.version+' • BY ẞ€ÑZ¥')
-    );
-  return c;
+  const lines = body.split('\\n');
+  const title = lines.shift() || '🛡️ ARGUS Help Center';
+  const description = lines.join('\\n').slice(0, 4096);
+
+  return new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle(title.replace(/^#\\s*/, '').slice(0, 256))
+    .setDescription(description)
+    .setImage('attachment://banner.png')
+    .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY ẞ€ÑZ¥' });
 }
 
 function payload(client,key=null,searchQuery=null) {
+  const banner = argusBannerFile();
   return {
-    components:[container(client,key,searchQuery)],
-    flags: MessageFlags.IsComponentsV2,
-    allowedMentions:{parse:[]},
-    files: argusBannerFile() ? [argusBannerFile()] : [],
-    __argusRaw:true
+    embeds: [helpEmbed(client,key,searchQuery)],
+    components: [menu(client,key), buttons(Boolean(key))],
+    allowedMentions: { parse: [] },
+    files: banner ? [banner] : [],
+    __argusRaw: true
   };
 }
 
