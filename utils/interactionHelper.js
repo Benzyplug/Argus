@@ -6,6 +6,20 @@ const componentOwners = new Map();
 
 const RESPONSE_LOG_CHANNEL_ID = '1555368259849560104';
 
+const PRIVATE_COMMANDS = new Set([
+  'sherlock', 'maigret', 'ghunt',
+  'email-footprint', 'email-breach',
+  'ip-info', 'ip-reputation', 'shodan-lookup',
+  'whois', 'whoxy', 'google-investigate', 'company-search',
+  'blockchain', 'crypto-detect', 'jwt',
+  'exif', 'doc-meta', 'upload', 'rekognition',
+  'nuclei', 'nuclei-scan'
+]);
+
+function shouldBePrivate(commandName = '') {
+  return PRIVATE_COMMANDS.has(String(commandName).toLowerCase());
+}
+
 function cloneForResponseLog(payload) {
   if (typeof payload === 'string') return { content: payload };
   if (!payload || typeof payload !== 'object') return null;
@@ -72,7 +86,8 @@ function installArgusResponses(interaction, client) {
     const bannerFile = argusBannerFile();
     if (bannerFile) payload.files = [bannerFile];
     if (options.ephemeral !== undefined) payload.ephemeral = options.ephemeral;
-    else payload.flags = MessageFlags.Ephemeral;
+    else if (options.flags !== undefined) payload.flags = options.flags;
+    else if (shouldBePrivate(commandName)) payload.flags = MessageFlags.Ephemeral;
     if (options.flags !== undefined) payload.flags = options.flags;
     return originalReply(payload);
   };
@@ -90,7 +105,7 @@ function installArgusResponses(interaction, client) {
     if (interaction.replied) {
       const styledFollow = raw ? cleanOptions : stylePayload(cleanOptions, context);
       const followOptions = { ...styledFollow, ...(styledFollow.components?.length ? { fetchReply: true } : {}) };
-      if (followOptions.ephemeral === undefined && followOptions.flags === undefined) followOptions.flags = MessageFlags.Ephemeral;
+      if (followOptions.ephemeral === undefined && followOptions.flags === undefined && shouldBePrivate(commandName)) followOptions.flags = MessageFlags.Ephemeral;
       const response = await originalFollowUp(followOptions);
       rememberComponentOwner(response, interaction.user?.id);
       await mirrorResponse(client, interaction, styledFollow);
@@ -98,7 +113,7 @@ function installArgusResponses(interaction, client) {
     }
     const styled = raw ? cleanOptions : stylePayload(cleanOptions, context);
     const replyOptions = { ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) };
-    if (replyOptions.ephemeral === undefined && replyOptions.flags === undefined) replyOptions.flags = MessageFlags.Ephemeral;
+    if (replyOptions.ephemeral === undefined && replyOptions.flags === undefined && shouldBePrivate(commandName)) replyOptions.flags = MessageFlags.Ephemeral;
     const response = await originalReply(replyOptions);
     rememberComponentOwner(response, interaction.user?.id);
     await mirrorResponse(client, interaction, styled);
@@ -116,7 +131,7 @@ function installArgusResponses(interaction, client) {
   interaction.followUp = async (options = {}) => {
     const styled = stylePayload(options, context);
     const followOptions = { ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) };
-    if (followOptions.ephemeral === undefined && followOptions.flags === undefined) followOptions.flags = MessageFlags.Ephemeral;
+    if (followOptions.ephemeral === undefined && followOptions.flags === undefined && shouldBePrivate(commandName)) followOptions.flags = MessageFlags.Ephemeral;
     const response = await originalFollowUp(followOptions);
     rememberComponentOwner(response, interaction.user?.id);
     await mirrorResponse(client, interaction, styled);
