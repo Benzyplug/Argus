@@ -130,7 +130,10 @@ function styleEmbed(input, context = {}) {
 }
 
 function bannerEmbed(context = {}) {
-  return null;
+  if (!hasLocalArgusBanner()) return null;
+  return new EmbedBuilder()
+    .setColor(COLORS[categoryFor(context.commandName)] ?? COLORS.general)
+    .setImage('attachment://banner.png');
 }
 
 function stylePayload(payload, context = {}) {
@@ -161,6 +164,16 @@ function stylePayload(payload, context = {}) {
     const files = Array.isArray(result.files) ? [...result.files] : [];
     if (!files.some(file => file?.name === 'banner.png')) files.push(argusBannerFile());
     result.files = files.filter(Boolean);
+
+    const banner = bannerEmbed(context);
+    const hasBanner = Array.isArray(result.embeds) &&
+      result.embeds.some(embed => embed?.data?.image?.url === 'attachment://banner.png');
+
+    if (banner && !hasBanner) {
+      // Discord renders embed images in the embed body; putting the banner in
+      // its own first embed makes it a true visual header for the message.
+      result.embeds = [banner, ...(result.embeds || [])];
+    }
   }
   return result;
 }
