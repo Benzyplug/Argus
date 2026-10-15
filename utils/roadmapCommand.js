@@ -26,7 +26,30 @@ async function lookup(name,target){
  if(name==='subdomain-enum'){const {spawn}=require('node:child_process');const tool=process.env.SUBFINDER_PATH||'subfinder';const lines=[];await new Promise((resolve,reject)=>{const p=spawn(tool,['-d',clean,'-silent'],{shell:false});p.stdout.on('data',d=>lines.push(d.toString()));let err='';p.stderr.on('data',d=>err+=d);p.on('error',e=>reject(Object.assign(new Error('Subfinder unavailable'),{code:e.code})));p.on('close',c=>c===0?resolve():reject(new Error(err.trim()||'Subfinder failed')))});const vals=[...new Set(lines.join('').split(/\r?\n/).filter(Boolean))].slice(0,75);return{title,description:desc,fields:[{name:'🌐 Subdomains',value:vals.length?vals.map(x=>'• `'+esc(x)+'`').join('\n'):'No subdomains found.'},{name:'📊 Count',value:String(vals.length),inline:true}]};}
  if(name==='shodan-lookup'){if(!process.env.SHODAN_API_KEY)return{title,description:desc,fields:[{name:'🔑 Configuration',value:'`SHODAN_API_KEY` is not configured.'}]};const r=await fetch('https://api.shodan.io/shodan/host/'+encodeURIComponent(clean)+'?key='+encodeURIComponent(process.env.SHODAN_API_KEY),{signal:AbortSignal.timeout(15000)});if(!r.ok)throw new Error('Shodan returned '+r.status);const j=await r.json();return{title,description:desc,fields:[{name:'🏢 Organization',value:esc(j.org||'Unknown'),inline:true},{name:'📍 Location',value:esc([j.city,j.country_name].filter(Boolean).join(', ')||'Unknown'),inline:true},{name:'🔌 Ports',value:esc((j.ports||[]).join(', ')||'None'),inline:true}]};}
  if(name==='ip-reputation'){if(!process.env.GREYNOISE_API_KEY)return{title,description:desc,fields:[{name:'🔑 Configuration',value:'`GREYNOISE_API_KEY` is not configured.'}]};const r=await fetch('https://api.greynoise.io/v3/community/'+encodeURIComponent(clean),{headers:{key:process.env.GREYNOISE_API_KEY,'User-Agent':'Argus/2.3'},signal:AbortSignal.timeout(15000)});if(!r.ok)throw new Error('GreyNoise returned '+r.status);const j=await r.json();return{title,description:desc,fields:[{name:'🛡️ Classification',value:esc(j.classification||'unknown'),inline:true},{name:'🏷️ Name',value:esc(j.name||'Unknown'),inline:true},{name:'📡 RIOT',value:String(Boolean(j.riot)),inline:true}]};}
- if(name==='avatar-search'){return{title,description:desc,fields:[{name:'🖼️ Public avatar sources',value:'• https://unavatar.io/'+encodeURIComponent(clean)+'\n• https://avatar.vercel.sh/'+encodeURIComponent(clean)+'.png'},{name:'ℹ️ Note',value:'Availability depends on the username/provider.'}]};}
+ if(name==='avatar-search'){
+  const username=clean.replace(/^@/,'');
+  if(!/^[a-zA-Z0-9_.-]{1,64}$/.test(username)) throw new Error('Invalid username');
+  const found=[];
+  const request=async(url,headers={})=>{try{const r=await fetch(url,{headers:{'User-Agent':'Argus/2.3','Accept':'application/json',...headers},redirect:'follow',signal:AbortSignal.timeout(10000)});if(!r.ok)return null;return await r.json();}catch{return null;}};
+
+  const gh=await request('https://api.github.com/users/'+encodeURIComponent(username), process.env.GITHUB_TOKEN?{Authorization:'Bearer '+process.env.GITHUB_TOKEN}:{});
+  if(gh?.login && gh?.avatar_url) found.push({platform:'GitHub',profile:gh.html_url||('https://github.com/'+encodeURIComponent(username)),avatar:gh.avatar_url});
+
+  const gl=await request('https://gitlab.com/api/v4/users?username='+encodeURIComponent(username));
+  const glu=Array.isArray(gl)?gl.find(u=>String(u.username||'').toLowerCase()===username.toLowerCase()):null;
+  if(glu?.avatar_url) found.push({platform:'GitLab',profile:glu.web_url||('https://gitlab.com/'+encodeURIComponent(username)),avatar:glu.avatar_url});
+
+  const reddit=await request('https://www.reddit.com/user/'+encodeURIComponent(username)+'/about.json');
+  const rd=reddit?.data;
+  const ravatar=rd?.snoovatar_img||rd?.icon_img;
+  if(rd?.name && ravatar) found.push({platform:'Reddit',profile:'https://www.reddit.com/user/'+encodeURIComponent(rd.name),avatar:String(ravatar).replace(/&amp;/g,'&')});
+
+  if(!found.length) return{title,description:desc,fields:[{name:'🔎 Result',value:'No confirmed public profile avatars were found for `'+esc(username)+'` on the supported sources.'}]};
+
+  const fields=[{name:'👤 Username',value:'`'+esc(username)+'`',inline:true},{name:'📊 Confirmed profiles',value:String(found.length),inline:true}];
+  for(const item of found) fields.push({name:'🖼️ '+item.platform,value:'[Open profile]('+item.profile+') • [Open avatar]('+item.avatar+')'});
+  return{title,description:'Confirmed public profile avatars found for this username.',fields};
+ }
  return{title,description:desc,fields:[{name:'🎯 Target',value:'`'+esc(clean)+'`'}]};
 }
 function fitFields(fields=[]){
