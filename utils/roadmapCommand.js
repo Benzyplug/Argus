@@ -104,7 +104,8 @@ function build(name){
     const embed=createArgusEmbed({title:result.title,description:result.description,color:0x5865F2,fields:fitFields(result.fields)},{commandName:name});
     await interaction.editReply({embeds:[embed]});
    }catch(error){
-    await interaction.editReply({embeds:[createArgusEmbed({title:'❌ Request failed',description:'The lookup could not be completed. Check the configured service or tool and try again.',color:0xED4245},{commandName:name})]});
+    // Let the global Argus error handler classify and render the real failure.
+    throw error;
    }
    return true;
   }
