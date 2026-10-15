@@ -1,304 +1,53 @@
-/**
- * File: dns.js
- * Description: DNS information retrieval command for domain reconnaissance
- * Author: ẞ€ÑZ¥
- * 
- * This command provides comprehensive DNS information for domain analysis including:
- * - DNS records (A, AAAA, MX, TXT, CNAME, NS)
- * - Domain configuration details
- * - Nameserver information
- * - Security records (SPF, DKIM, DMARC)
- * 
- * Dependencies:
- * - DNSDumpster API (requires DNSDUMPSTER_TOKEN in .env)
- * - Axios for HTTP requests
- * 
- * Usage: /dns domain:example.com
- */
-
 const { SlashCommandBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const dns = require('node:dns').promises;
 const { safeShowModal } = require('../utils/interactionHelper');
-const { createSelectMenu } = require('../utils/components');
-const axios = require('axios');
-const { getSafeAxiosConfig } = require('../utils/ssrf');
+const { createArgusEmbed } = require('../utils/embedBuilder');
 const { isValidDomain, sanitizeInput } = require('../utils/validation');
 
-function buildActionMenu() {
-    return createSelectMenu(
-        'argus:dns:actions',
-        'dns actions',
-        [
-            { label: 'Run again', value: 'again', description: 'Open the investigation form again', emoji: '🔎' },
-            { label: 'View Argus help', value: 'help', description: 'Browse available Argus operations', emoji: '🧿' }
-        ]
-    );
+async function resolveSafe(fn){ try { return await fn(); } catch(e){ if(['ENODATA','ENOTFOUND','ENOTIMP','ESERVFAIL','EREFUSED'].includes(e?.code)) return []; throw e; } }
+function list(values, map=x=>String(x)){ const a=(values||[]).map(map).filter(Boolean); return a.length?a.slice(0,30).map(x=>'• '+x).join('\n'):'None found'; }
+
+async function run(interaction, rawDomain){
+  await interaction.deferReply();
+  const domain=sanitizeInput(rawDomain).replace(/^https?:\/\//i,'').split('/')[0].replace(/\.$/,'').toLowerCase();
+  if(!isValidDomain(domain)){ const e=new Error('Invalid domain'); e.userMessage='Enter a valid domain such as `example.com`.'; throw e; }
+
+  const [a,aaaa,mx,ns,txt,cname,soa]=await Promise.all([
+    resolveSafe(()=>dns.resolve4(domain)), resolveSafe(()=>dns.resolve6(domain)),
+    resolveSafe(()=>dns.resolveMx(domain)), resolveSafe(()=>dns.resolveNs(domain)),
+    resolveSafe(()=>dns.resolveTxt(domain)), resolveSafe(()=>dns.resolveCname(domain)),
+    resolveSafe(()=>dns.resolveSoa(domain))
+  ]);
+
+  const fields=[
+    {name:'🌐 A (IPv4)',value:list(a,x=>'`'+x+'`')},
+    {name:'🌐 AAAA (IPv6)',value:list(aaaa,x=>'`'+x+'`')},
+    {name:'📨 MX',value:list(mx,x=>'`'+x.exchange+'`  priority '+x.priority)},
+    {name:'🧭 Nameservers',value:list(ns,x=>'`'+x+'`')},
+    {name:'📝 TXT',value:list(txt,x=>'`'+String(x.join(' ')).slice(0,700).replace(/`/g,'')+'`')},
+    {name:'🔗 CNAME',value:list(cname,x=>'`'+x+'`')}
+  ];
+  if(soa&&soa.nsname) fields.push({name:'⚙️ SOA',value:'Primary: `'+soa.nsname+'`\nAdmin: `'+soa.hostmaster+'`\nSerial: `'+soa.serial+'`'});
+  const count=[a,aaaa,mx,ns,txt,cname].reduce((n,x)=>n+(x?.length||0),0);
+  if(!count&&!soa){ const e=new Error('No results found'); e.userMessage='No public DNS records were found for `'+domain+'`.'; throw e; }
+
+  await interaction.editReply({embeds:[createArgusEmbed({
+    title:'🌐 DNS Intelligence',
+    description:'Public DNS records for **'+domain+'**.',
+    fields
+  },{commandName:'dns'})]});
 }
 
-module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('dns')
-        .setDescription('Retrieve comprehensive DNS information for a domain')
-        .addStringOption(option => 
-            option.setName('domain')
-                .setDescription('The domain to analyze (e.g., example.com)')
-                .setRequired(true)
-                .setMaxLength(253)), // RFC compliant domain length limit
-    
-    /**
-     * Execute the DNS lookup command
-     * @param {CommandInteraction} interaction - Discord interaction object
-     */
-    async run(interaction) {
-        // Defer reply to handle longer processing times
-        await interaction.deferReply();
-
-        // Get and validate domain input
-        const rawDomain = interaction.options.getString('domain');
-        const domain = sanitizeInput(rawDomain);
-        
-        // Validate domain format
-        if (!isValidDomain(domain)) {
-            return interaction.editReply({
-                content: '❌ **Invalid Domain Format**\n' +
-                        'Please provide a valid domain name (e.g., `example.com`).\n' +
-                        '• Domain must contain only letters, numbers, dots, and hyphens\n' +
-                        '• Must have a valid TLD extension\n' +
-                        '• Maximum length: 253 characters'
-            });
-        }
-        
-        // Check for required API token
-        const apiToken = process.env.DNSDUMPSTER_TOKEN;
-        if (!apiToken) {
-            return interaction.editReply({
-                content: '❌ **Configuration Error**\n' +
-                        'DNSDumpster API token is not configured. Please contact the administrator.'
-            });
-        }
-        
-        try {
-            console.log(`🔍 [DNS] Starting DNS lookup for domain: ${domain}`);
-            
-            // Make API request to DNSDumpster with timeout
-            const response = await axios.get(`https://api.dnsdumpster.com/domain/${domain}`, {
-                ...getSafeAxiosConfig(),
-                headers: {
-                    'X-API-Key': apiToken,
-                    'User-Agent': 'Discord-OSINT-Assistant/2.0'
-                },
-                timeout: 15000 // 15 second timeout
-            });
-            
-            const dnsData = response.data;
-            
-            // Check if we received valid data
-            if (!dnsData || Object.keys(dnsData).length === 0) {
-                return interaction.editReply({
-                    content: `❌ **No DNS Information Found**\n` +
-                            `No DNS records were found for \`${domain}\`.\n\n` +
-                            `**Possible reasons:**\n` +
-                            `• Domain does not exist\n` +
-                            `• Domain has no public DNS records\n` +
-                            `• Temporary DNS resolution issues`,
-                    ephemeral: false
-                });
-            }
-
-            // Format the response data
-            const formattedData = formatDnsData(dnsData, domain);
-            
-            // Check Discord message limits
-            if (formattedData.length <= 2000) {
-                // Send as single message
-                return interaction.editReply({
-                    content: `🔍 **DNS Analysis Results for \`${domain}\`**\n\`\`\`json\n${formattedData}\n\`\`\``
-                });
-            } else {
-                // Split into multiple messages
-                const chunks = splitIntoChunks(formattedData, 1900); // Leave room for formatting
-                
-                // Send first chunk as edit
-                await interaction.editReply({
-                    content: `🔍 **DNS Analysis Results for \`${domain}\`** (Part 1/${chunks.length})\n\`\`\`json\n${chunks[0]}\n\`\`\``
-                });
-                
-                // Send remaining chunks as follow-ups
-                for (let i = 1; i < chunks.length; i++) {
-                    await interaction.followUp({
-                        content: `📋 **DNS Data Continuation** (Part ${i + 1}/${chunks.length})\n\`\`\`json\n${chunks[i]}\n\`\`\``
-                    });
-                }
-            }
-
-            console.log(`✅ [DNS] Successfully completed DNS lookup for: ${domain}`);
-
-        } catch (error) {
-            console.error(`❌ [DNS] Error during DNS lookup for ${domain}:`, error.message);
-            
-            // Handle different types of errors
-            let errorMessage = '❌ **DNS Lookup Failed**\n';
-            
-            if (error.response) {
-                const statusCode = error.response.status;
-                
-                switch (statusCode) {
-                    case 401:
-                    case 403:
-                        errorMessage += 'Authentication failed. Invalid API key or unauthorized access.';
-                        break;
-                    case 404:
-                        errorMessage += `Domain \`${domain}\` not found or has no DNS records.`;
-                        break;
-                    case 429:
-                        errorMessage += 'Rate limit exceeded. Please wait before trying again.\n' +
-                                      '• DNSDumpster limits: 1 request per 2 seconds';
-                        break;
-                    case 500:
-                    case 502:
-                    case 503:
-                        errorMessage += 'DNS service is temporarily unavailable. Please try again later.';
-                        break;
-                    default:
-                        errorMessage += `API error (${statusCode}): ${error.response.statusText || 'Unknown error'}`;
-                }
-                
-                // Log detailed error for debugging
-                console.error(`[DNS] API Error Details:`, {
-                    status: statusCode,
-                    statusText: error.response.statusText,
-                    data: error.response.data
-                });
-                
-            } else if (error.code === 'ECONNABORTED') {
-                errorMessage += 'Request timed out. The DNS service may be slow or unavailable.';
-            } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-                errorMessage += 'Cannot connect to DNS service. Please check your internet connection.';
-            } else {
-                errorMessage += 'An unexpected error occurred while processing your request.';
-            }
-            
-            return interaction.editReply({
-                content: errorMessage,
-                ephemeral: false
-            });
-        }
-    },
-    
-    async execute(interaction) {
-        return safeShowModal(interaction, new ModalBuilder()
-            .setCustomId('argus:dns:modal')
-            .setTitle('dns')
-            .addComponents(
-                new ActionRowBuilder().addComponents(
-                    new TextInputBuilder()
-                        .setCustomId('domain')
-                        .setLabel('Domain')
-                        .setPlaceholder('example.com')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(true)
-                )
-            ));
-    },
-
-    async handleInteraction(interaction) {
-        if (interaction.isStringSelectMenu() && interaction.customId === 'argus:dns:actions') {
-            if (interaction.values[0] === 'help') {
-                await interaction.reply({ content: 'Use \`/help\` to browse the Argus command center.', ephemeral: true });
-                return true;
-            }
-            if (interaction.values[0] === 'again') {
-                return safeShowModal(interaction, new ModalBuilder()
-                    .setCustomId('argus:dns:modal')
-                    .setTitle('dns')
-                    .addComponents(
-                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('domain').setLabel('Domain').setPlaceholder('example.com').setStyle(TextInputStyle.Short).setRequired(true))
-                    ));
-            }
-        }
-
-        if (interaction.isModalSubmit() && interaction.customId === 'argus:dns:modal') {
-            const values = interaction.fields;
-            const options = {
-                getString: (name) => {
-                    const value = values.getTextInputValue(name);
-                    if (name === 'verbose' || name === 'include-nsfw') return value === 'true';
-                    return value || null;
-                },
-                getBoolean: (name) => {
-                    const value = values.getTextInputValue(name);
-                    return value === undefined || value === '' ? null : value === 'true';
-                },
-                getInteger: (name) => {
-                    const value = values.getTextInputValue(name);
-                    const parsed = Number.parseInt(value, 10);
-                    return Number.isFinite(parsed) ? parsed : null;
-                },
-                getSubcommand: () => null
-            };
-            const modalInteraction = new Proxy(interaction, {
-                get(target, prop) {
-                    if (prop === 'options') return options;
-                    const value = Reflect.get(target, prop, target);
-                    return typeof value === 'function' ? value.bind(target) : value;
-                }
-            });
-            await this.run(modalInteraction);
-            await interaction.editReply({ components: [buildActionMenu()] });
-            return true;
-        }
-        return false;
-    }
+module.exports={
+ data:new SlashCommandBuilder().setName('dns').setDescription('Retrieve public DNS records for a domain'),
+ async execute(interaction){
+   return safeShowModal(interaction,new ModalBuilder().setCustomId('argus:dns:modal').setTitle('DNS Intelligence').addComponents(
+     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('domain').setLabel('Domain').setPlaceholder('example.com').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(253))
+   ));
+ },
+ async handleInteraction(interaction){
+   if(!interaction.isModalSubmit?.()||interaction.customId!=='argus:dns:modal') return false;
+   await run(interaction,interaction.fields.getTextInputValue('domain'));
+   return true;
+ }
 };
-
-/**
- * Format DNS data for display
- * @param {Object} data - Raw DNS data from API
- * @param {string} domain - Original domain queried
- * @returns {string} Formatted DNS information
- */
-function formatDnsData(data, domain) {
-    try {
-        // Create a clean, readable format
-        const formatted = {
-            domain: domain,
-            timestamp: new Date().toISOString(),
-            records: data
-        };
-        
-        return JSON.stringify(formatted, null, 2);
-    } catch (error) {
-        console.error('[DNS] Error formatting data:', error);
-        return JSON.stringify(data, null, 2);
-    }
-}
-
-/**
- * Split text into chunks that fit Discord message limits
- * @param {string} text - Text to split
- * @param {number} maxLength - Maximum length per chunk
- * @returns {Array<string>} Array of text chunks
- */
-function splitIntoChunks(text, maxLength) {
-    const chunks = [];
-    const lines = text.split('\n');
-    let currentChunk = '';
-    
-    for (const line of lines) {
-        // Check if adding this line would exceed the limit
-        if (currentChunk.length + line.length + 1 > maxLength) {
-            if (currentChunk.trim()) {
-                chunks.push(currentChunk.trim());
-            }
-            currentChunk = line;
-        } else {
-            currentChunk += (currentChunk ? '\n' : '') + line;
-        }
-    }
-    
-    // Add the last chunk if it has content
-    if (currentChunk.trim()) {
-        chunks.push(currentChunk.trim());
-    }
-    
-    return chunks.length > 0 ? chunks : [text.slice(0, maxLength)];
-}
