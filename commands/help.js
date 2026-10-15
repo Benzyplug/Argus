@@ -22,11 +22,11 @@ const MODAL = 'argus:help:search:modal';
 const INPUT = 'argus:help:search:query';
 
 const CATEGORY_RULES = [
-  ['rankings','🎖 Rankings','Core Argus information', ['bot']],
-  ['web','🌐 Web Intelligence','Web, domain, URL and network reconnaissance', ['dns','dork','extract-links','favicon','host-lookup','link-check','redirect-check','web-recon','whois','cert-search','subdomain-enum','wayback-history','web-tech','shodan-lookup','ip-info','ip-reputation']],
-  ['identity','🕵️ OSINT & Identity','Identity, email and public-data investigation', ['company-search','google-investigate','maigret','sherlock','username-gen','avatar-search','email-breach','email-footprint']],
-  ['files','🧬 Files & Data','Blockchain, metadata and file analysis', ['blockchain','crypto-detect','doc-meta','exif','upload']],
-  ['utilities','🤖 AI & Utilities','AI, monitoring and security utilities', ['ai','image-ai','jwt','monitor','nuclei-scan']]
+  ['general','⚙️ General','Bot information and core utilities', ['bot']],
+  ['web','🌐 Web Intelligence','Domains, websites, URLs and network intelligence', ['dns','dork','extract-links','favicon','host-lookup','link-check','redirect-check','web-recon','whois','cert-search','subdomain-enum','wayback-history','web-tech','shodan-lookup','ip-info','ip-reputation']],
+  ['identity','🔎 Identity Intelligence','Usernames, emails and public identity research', ['company-search','google-investigate','maigret','sherlock','username-gen','avatar-search','email-breach','email-footprint']],
+  ['files','📁 File Analysis','Files, metadata, images and blockchain data', ['blockchain','crypto-detect','doc-meta','exif','upload']],
+  ['utilities','🛠️ Utilities','AI, monitoring and security tools', ['ai','image-ai','jwt','monitor','nuclei-scan']]
 ];
 
 function commands(client) {
@@ -75,26 +75,17 @@ function buttons(back=false) {
 
 function textFor(client,key=null) {
   const gs=groups(client);
-  if (!key) {
-    return [
-      '# 🛡️ ARGUS Help Center',
-      'Your open-source intelligence toolkit for discovering, investigating, and correlating public information.',
-      '',
-      '### Getting Started',
-      'Choose a category below to browse registered operations, or use **Find a Command** to search.',
-      '',
-      ...gs.flatMap(g => ['### '+g.title, g.description, ''])
-    ].join('\n').slice(0,4000);
-  }
+  if (!key) return null;
+
   const g=gs.find(x=>x.key===key);
-  if(!g) return textFor(client);
+  if(!g) return null;
+
   return [
-    '# '+g.title,
+    '**'+g.title+'**',
     g.description,
     '',
-    '### Available commands',
-    ...g.items.map(x => (x.restricted?'🔒 ':'')+'**'+x.name+'** — '+x.description)
-  ].join('\n').slice(0,4000);
+    ...g.items.map(x => (x.restricted?'🔒  ':'')+'**'+x.name+'**\n'+x.description)
+  ].join('\n\n').slice(0,4000);
 }
 
 function searchText(client,q) {
@@ -107,17 +98,43 @@ function searchText(client,q) {
 }
 
 function helpEmbed(client, key=null, searchQuery=null) {
-  const body = searchQuery === null ? textFor(client,key) : searchText(client,searchQuery);
-  const lines = body.split('\n');
-  const title = lines.shift() || '🛡️ ARGUS Help Center';
-  const description = lines.join('\n').slice(0, 4096);
-
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle(title.replace(/^#\s*/, '').slice(0, 256))
-    .setDescription(description)
     .setImage('attachment://banner.png')
     .setFooter({ text: '⌬ ARGUS • v' + pkg.version + ' • BY ẞ€ÑZ¥' });
+
+  if (searchQuery !== null) {
+    const body = searchText(client,searchQuery);
+    const lines = body.split('\n');
+    embed.setTitle((lines.shift() || '🔎 Command Search').replace(/^#\\s*/, '').slice(0,256));
+    embed.setDescription(lines.join('\n').slice(0,4096));
+    return embed;
+  }
+
+  if (key) {
+    const g = groups(client).find(x => x.key === key);
+    if (g) {
+      embed.setTitle(g.title);
+      embed.setDescription([
+        g.description,
+        '',
+        ...g.items.map(x => (x.restricted ? '🔒  ' : '') + '**' + x.name + '** — ' + x.description)
+      ].join('\n').slice(0,4096));
+      return embed;
+    }
+  }
+
+  embed
+    .setTitle('🛡️ ARGUS Help Center')
+    .setDescription('Select a category below to view its commands, or search for a specific operation.')
+    .addFields(
+      ...groups(client).map(g => ({
+        name: g.title,
+        value: g.description,
+        inline: true
+      }))
+    );
+  return embed;
 }
 
 function payload(client,key=null,searchQuery=null) {
