@@ -1,6 +1,6 @@
 const { MessageFlags } = require('discord.js');
 const { isInteractionValid, safeShowModal: validatedShowModal } = require('./interactionValidator');
-const { stylePayload, loadingEmbed, argusBannerFile } = require('./embedBuilder');
+const { stylePayload, loadingPayload } = require('./embedBuilder');
 
 const componentOwners = new Map();
 
@@ -78,12 +78,8 @@ function installArgusResponses(interaction, client) {
   const context = { interaction, client, commandName };
 
   interaction.deferReply = async (options = {}) => {
-    // The loading embed itself carries the Argus banner so the response is
-    // always one embed, not a separate banner embed.
-    const loading = loadingEmbed(interaction, commandName);
-    const payload = { embeds: [loading] };
-    const bannerFile = argusBannerFile();
-    if (bannerFile) payload.files = [bannerFile];
+    // Components V2 loading card: banner media header + content in one container.
+    const payload = loadingPayload(interaction, commandName);
     if (options.ephemeral !== undefined) {
       if (options.ephemeral) payload.flags |= MessageFlags.Ephemeral;
     } else if (options.flags !== undefined) {
