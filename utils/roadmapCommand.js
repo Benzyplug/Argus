@@ -27,28 +27,52 @@ async function lookup(name,target){
  if(name==='shodan-lookup'){if(!process.env.SHODAN_API_KEY)return{title,description:desc,fields:[{name:'🔑 Configuration',value:'`SHODAN_API_KEY` is not configured.'}]};const r=await fetch('https://api.shodan.io/shodan/host/'+encodeURIComponent(clean)+'?key='+encodeURIComponent(process.env.SHODAN_API_KEY),{signal:AbortSignal.timeout(15000)});if(!r.ok)throw new Error('Shodan returned '+r.status);const j=await r.json();return{title,description:desc,fields:[{name:'🏢 Organization',value:esc(j.org||'Unknown'),inline:true},{name:'📍 Location',value:esc([j.city,j.country_name].filter(Boolean).join(', ')||'Unknown'),inline:true},{name:'🔌 Ports',value:esc((j.ports||[]).join(', ')||'None'),inline:true}]};}
  if(name==='ip-reputation'){if(!process.env.GREYNOISE_API_KEY)return{title,description:desc,fields:[{name:'🔑 Configuration',value:'`GREYNOISE_API_KEY` is not configured.'}]};const r=await fetch('https://api.greynoise.io/v3/community/'+encodeURIComponent(clean),{headers:{key:process.env.GREYNOISE_API_KEY,'User-Agent':'Argus/2.3'},signal:AbortSignal.timeout(15000)});if(!r.ok)throw new Error('GreyNoise returned '+r.status);const j=await r.json();return{title,description:desc,fields:[{name:'🛡️ Classification',value:esc(j.classification||'unknown'),inline:true},{name:'🏷️ Name',value:esc(j.name||'Unknown'),inline:true},{name:'📡 RIOT',value:String(Boolean(j.riot)),inline:true}]};}
  if(name==='avatar-search'){
-  const username=clean.replace(/^@/,'');
-  if(!/^[a-zA-Z0-9_.-]{1,64}$/.test(username)) throw new Error('Invalid username');
-  const found=[];
-  const request=async(url,headers={})=>{try{const r=await fetch(url,{headers:{'User-Agent':'Argus/2.3','Accept':'application/json',...headers},redirect:'follow',signal:AbortSignal.timeout(10000)});if(!r.ok)return null;return await r.json();}catch{return null;}};
+  const username=clean.replace(/^@/,'').trim();
+  if(!/^[\\p{L}\\p{N}_.-]{1,64}$/u.test(username)) throw new Error('Invalid username');
+  const found=[], seen=new Set();
+  const add=(platform,profile,avatar=null,confirmed=true)=>{const k=platform+'|'+profile;if(!seen.has(k)){seen.add(k);found.push({platform,profile,avatar,confirmed});}};
+  const request=async(url,opts={})=>{try{const r=await fetch(url,{headers:{'User-Agent':'Argus/2.3','Accept':'application/json,text/html;q=0.9,*/*;q=0.8',...(opts.headers||{})},redirect:'follow',signal:AbortSignal.timeout(10000)});if(!r.ok)return null;const type=r.headers.get('content-type')||'';return type.includes('json')?await r.json():await r.text();}catch{return null;}};
 
-  const gh=await request('https://api.github.com/users/'+encodeURIComponent(username), process.env.GITHUB_TOKEN?{Authorization:'Bearer '+process.env.GITHUB_TOKEN}:{});
-  if(gh?.login && gh?.avatar_url) found.push({platform:'GitHub',profile:gh.html_url||('https://github.com/'+encodeURIComponent(username)),avatar:gh.avatar_url});
+  // Confirmed API-backed sources.
+  const gh=await request('https://api.github.com/users/'+encodeURIComponent(username),{headers:process.env.GITHUB_TOKEN?{Authorization:'Bearer '+process.env.GITHUB_TOKEN}:{}});
+  if(gh?.login&&gh?.avatar_url)add('GitHub',gh.html_url||('https://github.com/'+encodeURIComponent(gh.login)),gh.avatar_url,true);
 
   const gl=await request('https://gitlab.com/api/v4/users?username='+encodeURIComponent(username));
   const glu=Array.isArray(gl)?gl.find(u=>String(u.username||'').toLowerCase()===username.toLowerCase()):null;
-  if(glu?.avatar_url) found.push({platform:'GitLab',profile:glu.web_url||('https://gitlab.com/'+encodeURIComponent(username)),avatar:glu.avatar_url});
+  if(glu?.username)add('GitLab',glu.web_url||('https://gitlab.com/'+encodeURIComponent(glu.username)),glu.avatar_url||null,true);
 
   const reddit=await request('https://www.reddit.com/user/'+encodeURIComponent(username)+'/about.json');
   const rd=reddit?.data;
-  const ravatar=rd?.snoovatar_img||rd?.icon_img;
-  if(rd?.name && ravatar) found.push({platform:'Reddit',profile:'https://www.reddit.com/user/'+encodeURIComponent(rd.name),avatar:String(ravatar).replace(/&amp;/g,'&')});
+  if(rd?.name)add('Reddit','https://www.reddit.com/user/'+encodeURIComponent(rd.name),(rd.snoovatar_img||rd.icon_img||'').replace(/&amp;/g,'&')||null,true);
 
-  if(!found.length) return{title,description:desc,fields:[{name:'🔎 Result',value:'No confirmed public profile avatars were found for `'+esc(username)+'` on the supported sources.'}]};
+  // TikTok's public creator oEmbed endpoint can confirm public creator pages.
+  const ttProfile='https://www.tiktok.com/@'+encodeURIComponent(username);
+  const tt=await request('https://www.tiktok.com/oembed?url='+encodeURIComponent(ttProfile));
+  if(tt?.author_url)add('TikTok',tt.author_url,null,true);
 
-  const fields=[{name:'👤 Username',value:'`'+esc(username)+'`',inline:true},{name:'📊 Confirmed profiles',value:String(found.length),inline:true}];
-  for(const item of found) fields.push({name:'🖼️ '+item.platform,value:'[Open profile]('+item.profile+') • [Open avatar]('+item.avatar+')'});
-  return{title,description:'Confirmed public profile avatars found for this username.',fields};
+  // Public profile candidates. These are returned separately and never claimed as confirmed
+  // because these services do not provide a reliable anonymous username lookup API.
+  const candidates=[
+    ['Instagram','https://www.instagram.com/'+encodeURIComponent(username)+'/'],
+    ['X / Twitter','https://x.com/'+encodeURIComponent(username)],
+    ['Twitch','https://www.twitch.tv/'+encodeURIComponent(username)],
+    ['Pinterest','https://www.pinterest.com/'+encodeURIComponent(username)+'/'],
+    ['SoundCloud','https://soundcloud.com/'+encodeURIComponent(username)],
+    ['Steam','https://steamcommunity.com/id/'+encodeURIComponent(username)],
+    ['Keybase','https://keybase.io/'+encodeURIComponent(username)],
+    ['About.me','https://about.me/'+encodeURIComponent(username)]
+  ];
+  for(const [platform,profile] of candidates)add(platform,profile,null,false);
+
+  const confirmed=found.filter(x=>x.confirmed), possible=found.filter(x=>!x.confirmed);
+  const fields=[
+    {name:'👤 Username',value:'`'+esc(username)+'`',inline:true},
+    {name:'✅ Confirmed profiles',value:String(confirmed.length),inline:true}
+  ];
+  for(const item of confirmed)fields.push({name:'🖼️ '+item.platform,value:'[Open profile]('+item.profile+')'+(item.avatar?' • [Open avatar]('+item.avatar+')':'')});
+  if(possible.length)fields.push({name:'🔎 Check these public profiles',value:possible.map(x=>'• ['+x.platform+']('+x.profile+')').join('\\n')});
+  fields.push({name:'💬 Discord',value:'Discord does not expose a public username-to-profile/avatar lookup. Argus will not guess or fabricate a Discord account.'});
+  return{title,description:confirmed.length?'Public username search completed. Confirmed matches are separated from profile candidates.':'No API-confirmed avatar was found, but Argus generated public profile candidates to check.',fields};
  }
  return{title,description:desc,fields:[{name:'🎯 Target',value:'`'+esc(clean)+'`'}]};
 }
