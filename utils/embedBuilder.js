@@ -1,18 +1,16 @@
-const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
-const fs = require('node:fs');
-const path = require('node:path');
+const {
+  EmbedBuilder,
+  ContainerBuilder,
+  MediaGalleryBuilder,
+  MediaGalleryItemBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
+  MessageFlags
+} = require('discord.js');
 const pkg = require('../package.json');
 
-const ARGUS_BANNER_PATH = path.join(__dirname, '..', 'banner.png');
-const ARGUS_BANNER_URL = 'attachment://banner.png';
-
-function hasLocalArgusBanner() {
-  try { return fs.existsSync(ARGUS_BANNER_PATH); } catch { return false; }
-}
-
-function argusBannerFile() {
-  return hasLocalArgusBanner() ? new AttachmentBuilder(ARGUS_BANNER_PATH, { name: 'banner.png' }) : null;
-}
+const ARGUS_BANNER_URL = 'https://raw.githubusercontent.com/Benzyplug/Argus/main/banner.png';
 
 const COLORS = Object.freeze({
   network: 0x3498db, identity: 0x9b59b6, blockchain: 0x2ecc71, aviation: 0x00a8ff,
@@ -22,176 +20,123 @@ const COLORS = Object.freeze({
 const ERROR_COLOR = COLORS.error;
 const ARGUS_FOOTER = () => '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥';
 
-function getArgusBanner(client) {
-  try {
-    const bot = client?.user;
-    return bot?.bannerURL?.({ extension: 'png', size: 2048 }) ||
-      client?.application?.coverURL?.({ extension: 'png', size: 1024 }) ||
-      process.env.EMBED_BANNER_URL || null;
-  } catch { return process.env.EMBED_BANNER_URL || null; }
-}
-
 function categoryFor(commandName = '') {
   const n = commandName.toLowerCase();
-  if (/dns|host|link|web|redirect|favicon|extract/.test(n)) return 'network';
-  if (/username|maigret|sherlock|google|whois|company|nike/.test(n)) return 'identity';
+  if (/dns|host|link|web|redirect|favicon|extract|ip|shodan|subdomain|cert/.test(n)) return 'network';
+  if (/username|maigret|sherlock|google|whois|company|email|ghunt/.test(n)) return 'identity';
   if (/blockchain|crypto|jwt/.test(n)) return 'blockchain';
-  if (/flight|airport|vessel|vehicle/.test(n)) return 'aviation';
   if (/nuclei|security|recon/.test(n)) return 'security';
   if (/ai|image/.test(n)) return 'ai';
-  if (/exif|upload|doc/.test(n)) return 'files';
+  if (/exif|upload|doc|file/.test(n)) return 'files';
   return 'general';
-}
-
-function safeUrl(value) {
-  if (!value || typeof value !== 'string') return null;
-  try { return new URL(value).toString(); } catch { return null; }
 }
 
 function targetFromInteraction(interaction) {
   try {
-    const opts = interaction.options?.data || [];
-    const values = [];
-    const walk = list => (list || []).forEach(o => { if (typeof o.value === 'string') values.push(o.value); walk(o.options); });
-    walk(opts);
-    return values[0] || null;
+    const values=[];
+    const walk=list=>(list||[]).forEach(o=>{if(typeof o.value==='string')values.push(o.value);walk(o.options);});
+    walk(interaction.options?.data||[]);
+    return values[0]||null;
   } catch { return null; }
-}
-
-function faviconForTarget(target) {
-  if (!target) return null;
-  const clean = String(target).replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
-  if (!clean || !clean.includes('.')) return null;
-  return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(clean) + '&sz=128';
 }
 
 function createArgusEmbed(config = {}, context = {}) {
   const embed = new EmbedBuilder().setColor(config.color ?? COLORS[categoryFor(context.commandName)] ?? COLORS.general);
-  if (config.title) embed.setTitle(String(config.title).slice(0, 256));
-  if (config.description) embed.setDescription(String(config.description).slice(0, 4096));
-  if (Array.isArray(config.fields) && config.fields.length) embed.addFields(config.fields.slice(0, 25));
-  if (config.url) { const url = safeUrl(config.url); if (url) embed.setURL(url); }
-  if (config.thumbnail) { const url = safeUrl(config.thumbnail); if (url) embed.setThumbnail(url); }
-  if (config.banner) { const url = safeUrl(config.banner); if (url) embed.setImage(url); }
+  if (config.title) embed.setTitle(String(config.title).slice(0,256));
+  if (config.description) embed.setDescription(String(config.description).slice(0,4096));
+  if (Array.isArray(config.fields)&&config.fields.length) embed.addFields(config.fields.slice(0,25));
+  if (config.url) embed.setURL(config.url);
+  if (config.thumbnail) embed.setThumbnail(config.thumbnail);
   if (config.author) embed.setAuthor(config.author);
-  if (config.footer !== false) embed.setFooter({ text: String(config.footer || ARGUS_FOOTER()).slice(0, 2048) });
-  if (config.timestamp === true) embed.setTimestamp(config.timestamp instanceof Date ? config.timestamp : new Date());
+  if (config.footer !== false) embed.setFooter({text:String(config.footer||ARGUS_FOOTER()).slice(0,2048)});
   return embed;
 }
 
-function fieldEmoji(name = '') {
-  const n = name.toLowerCase();
-  if (/email|mail/.test(n)) return '📧';
-  if (/domain|dns|url|host|website|link/.test(n)) return '🌐';
-  if (/user|username|identity|account|profile/.test(n)) return '👤';
-  if (/ip|network|port|asn|isp/.test(n)) return '🛰️';
-  if (/blockchain|crypto|wallet|transaction|address|token/.test(n)) return '⛓️';
-  if (/warning|reason|risk|threat/.test(n)) return '⚠️';
-  if (/error|failed|failure/.test(n)) return '❌';
-  if (/success|status|result|found/.test(n)) return '✅';
-  if (/source|provider|api/.test(n)) return '🔎';
-  if (/time|date|created|updated/.test(n)) return '🕒';
-  return '•';
+function styleEmbed(input, context={}) {
+  const json=input instanceof EmbedBuilder?input.toJSON():{...input};
+  delete json.timestamp;
+  return new EmbedBuilder(json).setColor(json.color||COLORS[categoryFor(context.commandName)]||COLORS.general);
 }
 
-function decorateFields(fields) {
-  return fields.map(field => {
-    const name = String(field.name || '');
-    const decoratedName = /^[\p{Extended_Pictographic}]/u.test(name) || name.startsWith('•')
-      ? name
-      : fieldEmoji(name) + ' ' + name;
-    return { ...field, name: decoratedName };
-  });
-}
-
-function styleEmbed(input, context = {}) {
-  const json = input instanceof EmbedBuilder ? input.toJSON() : { ...input };
-  const commandName = context.commandName || '';
-  const category = categoryFor(commandName);
-  const embed = new EmbedBuilder(json).setColor(json.color || COLORS[category]);
-  const bot = context.client?.user;
-  const botName = bot?.username || process.env.BOT_NAME || 'Argus';
-  const botIcon = bot?.displayAvatarURL?.({ extension: 'png', size: 64 });
-  const target = context.target || targetFromInteraction(context.interaction);
-  if (!json.thumbnail?.url) {
-    const targetIcon = faviconForTarget(target);
-    if (targetIcon) embed.setThumbnail(targetIcon);
-    else if (botIcon) embed.setThumbnail(botIcon);
+function embedToMarkdown(input) {
+  const e=input instanceof EmbedBuilder?input.toJSON():input||{};
+  const out=[];
+  if(e.author?.name) out.push('-# '+e.author.name);
+  if(e.title) out.push('# '+e.title);
+  if(e.description) out.push(e.description);
+  for(const f of e.fields||[]) {
+    out.push('', '### '+String(f.name||'Result'), String(f.value||'—'));
   }
-  const title = json.title || '';
-  const isError = /(^|\s)(❌|error|failed|failure)/i.test(title);
-  if (title && !/^[✅❌⚠️]/.test(title)) embed.setTitle(title.slice(0, 256));
-  let fields = decorateFields([...(json.fields || [])]);
-  if (isError && fields.length < 25) fields.push({ name: '🆘 Support', value: process.env.SUPPORT_URL || 'https://github.com/Benzyplug/Argus/issues', inline: false });
-  delete embed.data.timestamp;
-  embed.setFields(fields.slice(0, 25));
-  if (!json.footer?.text) embed.setFooter({ text: ARGUS_FOOTER() });
-  return embed;
+  if(e.footer?.text) out.push('', '-# '+e.footer.text);
+  return out.join('\n').slice(0,3900);
 }
 
-function bannerEmbed(context = {}) {
-  return new EmbedBuilder()
-    .setColor(COLORS[categoryFor(context.commandName)] ?? COLORS.general)
-    .setImage(ARGUS_BANNER_URL);
+function payloadText(payload, context={}) {
+  if(typeof payload==='string') return payload.slice(0,3900);
+  const parts=[];
+  if(payload?.content) parts.push(String(payload.content));
+  for(const e of payload?.embeds||[]) parts.push(embedToMarkdown(styleEmbed(e,context)));
+  return parts.filter(Boolean).join('\n\n').slice(0,3900)||'Processing your request…';
 }
 
+function isV2(payload) {
+  return Array.isArray(payload?.components) &&
+    payload.components.some(c => c instanceof ContainerBuilder || c?.data?.type === 17) &&
+    ((Number(payload.flags)||0) & MessageFlags.IsComponentsV2);
+}
 
-function stylePayload(payload, context = {}) {
-  const result = typeof payload === 'string' ? {} : { ...(payload || {}) };
+function stylePayload(payload, context={}) {
+  if(payload?.__argusRaw) {
+    const raw={...payload}; delete raw.__argusRaw; return raw;
+  }
+  if(isV2(payload)) return payload;
 
-  if (typeof payload === 'string') {
-    const content = payload.trim();
-    const isError = /^\s*(❌|⚠️|error|failed|failure)/i.test(content);
-    result.embeds = [styleEmbed({
-      title: isError ? '❌ Request failed' : '',
-      description: content.slice(0, 4096),
-      color: isError ? COLORS.error : COLORS[categoryFor(context.commandName)]
-    }, context)];
-  } else if (!Array.isArray(result.embeds) && typeof result.content === 'string' && result.content.trim()) {
-    const content = result.content.trim();
-    const isError = /^\s*(❌|⚠️|error|failed|failure)/i.test(content);
-    result.embeds = [styleEmbed({
-      title: isError ? '❌ Request failed' : '',
-      description: content.slice(0, 4096),
-      color: isError ? COLORS.error : COLORS[categoryFor(context.commandName)]
-    }, context)];
-    delete result.content;
-  } else if (Array.isArray(result.embeds)) {
-    result.embeds = result.embeds.map(embed => styleEmbed(embed, context));
+  const original = typeof payload==='string'?{}:{...(payload||{})};
+  const text=payloadText(payload,context);
+  const rows=(original.components||[]).filter(c=>c?.data?.type===1 || c?.toJSON?.().type===1);
+
+  const container=new ContainerBuilder()
+    .setAccentColor(COLORS[categoryFor(context.commandName)]||COLORS.general)
+    .addMediaGalleryComponents(
+      new MediaGalleryBuilder().addItems(
+        new MediaGalleryItemBuilder().setURL(ARGUS_BANNER_URL).setDescription('ARGUS')
+      )
+    )
+    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
+    .addTextDisplayComponents(new TextDisplayBuilder().setContent(text));
+
+  if(rows.length) {
+    container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+    for(const row of rows) container.addActionRowComponents(row);
   }
 
-  // Global Argus banner: every command response that uses an embed gets
-  // banner.png as its visible header image. This runs after command-specific
-  // styling so no command can accidentally lose the Argus branding.
-  if (Array.isArray(result.embeds) && result.embeds.length) {
-    const primary = result.embeds[0];
-    const primaryJson = primary instanceof EmbedBuilder ? primary.toJSON() : primary;
-    result.embeds[0] = new EmbedBuilder(primaryJson).setImage(ARGUS_BANNER_URL);
-
-    const bannerFile = argusBannerFile();
-    if (bannerFile) {
-      const existingFiles = Array.isArray(result.files) ? result.files : [];
-      result.files = [
-        ...existingFiles.filter(file => {
-          const name = file?.name || file?.attachment?.name;
-          return name !== 'banner.png';
-        }),
-        bannerFile
-      ];
-    }
-  }
+  const result={
+    components:[container],
+    flags:(Number(original.flags)||0)|MessageFlags.IsComponentsV2,
+    allowedMentions:original.allowedMentions||{parse:[]}
+  };
+  if(original.files?.length) result.files=original.files;
   return result;
 }
 
-function loadingEmbed(interaction, toolName) {
-  const target = targetFromInteraction(interaction);
+function loadingEmbed(interaction,toolName) {
   return createArgusEmbed({
-    title: '⌁ Processing…',
-    description: '〢 Processing your request…',
-    fields: [{ name: '🛰️ Tool', value: '`' + (toolName || interaction.commandName || 'Argus') + '`', inline: true }],
-    footer: ARGUS_FOOTER(),
-    banner: ARGUS_BANNER_URL
-  }, { interaction, commandName: interaction.commandName, client: interaction.client });
+    title:'⌁ Processing…',
+    description:'Processing your request…',
+    fields:[{name:'🛰️ Tool',value:'`'+(toolName||interaction.commandName||'Argus')+'`',inline:true}],
+    footer:ARGUS_FOOTER()
+  },{interaction,commandName:interaction.commandName,client:interaction.client});
 }
 
-module.exports = { ARGUS_BANNER_URL, COLORS, ERROR_COLOR, ARGUS_FOOTER, categoryFor, targetFromInteraction, createArgusEmbed, styleEmbed, stylePayload, loadingEmbed, faviconForTarget, getArgusBanner, bannerEmbed, argusBannerFile };
+function loadingPayload(interaction,toolName) {
+  return stylePayload({embeds:[loadingEmbed(interaction,toolName)]},{
+    interaction,client:interaction.client,commandName:interaction.commandName
+  });
+}
+
+function getArgusBanner(){return ARGUS_BANNER_URL;}
+function bannerEmbed(context={}){return new EmbedBuilder().setColor(COLORS[categoryFor(context.commandName)]||COLORS.general).setImage(ARGUS_BANNER_URL);}
+function argusBannerFile(){return null;}
+function faviconForTarget(){return null;}
+
+module.exports={ARGUS_BANNER_URL,COLORS,ERROR_COLOR,ARGUS_FOOTER,categoryFor,targetFromInteraction,createArgusEmbed,styleEmbed,stylePayload,loadingEmbed,loadingPayload,faviconForTarget,getArgusBanner,bannerEmbed,argusBannerFile};
