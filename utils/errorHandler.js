@@ -50,7 +50,7 @@ function buildErrorEmbed(error,context={}) {
     fields:[
       {name:'Status',value:'`'+d.status+'`',inline:true},
       {name:'Operation',value:'`'+command+'`',inline:true},
-      {name:'Next step',value:type===ErrorTypes.RATE_LIMIT?'Wait briefly and retry.':type===ErrorTypes.CONFIGURATION?'Configure the required service, then retry.':type===ErrorTypes.VALIDATION?'Correct the target/input and retry.':'Retry the operation. If it keeps failing, report it.'}
+      {name:'Next step',value:type===ErrorTypes.RATE_LIMIT?'Wait briefly and retry.':type===ErrorTypes.CONFIGURATION?'Configure the required service, then retry.':type===ErrorTypes.VALIDATION?'Correct the target/input and retry.':'Retry the operation. If it keeps failing, run the command again later.'}
     ]
   },{commandName:command});
 }
