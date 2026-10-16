@@ -79,6 +79,42 @@ function updatePresence() {
     }
 }
 
+async function waitForRetry(retryAfterSeconds) {
+    const delayMs = Math.min(Math.max(Number(retryAfterSeconds || 1) * 1000, 1000), 60000);
+    console.warn(`[ARGUS] DISCORD REST RATE LIMITED — waiting ${Math.ceil(delayMs / 1000)}s before retry...`);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+}
+
+async function discordFetchWith429Retry(url, options, label, attempts = 4) {
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        const response = await fetch(url, options);
+
+        if (response.status !== 429) return response;
+
+        const text = await response.text();
+        let body;
+        try { body = JSON.parse(text); } catch { body = {}; }
+
+        const retryAfter = Number(
+            body?.retry_after ??
+            response.headers.get('Retry-After') ??
+            5
+        );
+
+        console.warn(
+            `[ARGUS] DISCORD REST 429 — ${label} attempt ${attempt}/${attempts}, retry_after=${retryAfter}s`
+        );
+
+        if (attempt === attempts) {
+            throw new Error(
+                `Discord REST 429 Too Many Requests after ${attempts} attempts: ${text}`
+            );
+        }
+
+        await waitForRetry(retryAfter);
+    }
+}
+
 async function syncApplicationCommands(payload, label = 'loaded') {
     const guildId = process.env.GUILD_ID;
     const applicationId = process.env.CLIENT_ID;
@@ -93,7 +129,7 @@ async function syncApplicationCommands(payload, label = 'loaded') {
 
     const endpoint = `https://discord.com/api/v10/applications/${applicationId}/guilds/${guildId}/commands`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 120000);
 
     try {
         // Always GET first. Only bulk-overwrite when the registered command
@@ -154,7 +190,7 @@ async function syncApplicationCommands(payload, label = 'loaded') {
         console.log(`[ARGUS] COMMANDS DIFFER — registering ${payload.length} commands...`);
         console.log('[ARGUS] DISCORD REST PUT START...');
 
-        const response = await fetch(endpoint, {
+        const response = await discordFetchWith429Retry(endpoint, {
             method: 'PUT',
             headers: {
                 Authorization: `Bot ${token}`,
@@ -162,7 +198,7 @@ async function syncApplicationCommands(payload, label = 'loaded') {
             },
             body: JSON.stringify(payload),
             signal: controller.signal
-        });
+        }, 'guild command registration', 4);
 
         const text = await response.text();
         let body;
@@ -453,44 +489,56 @@ async function startArgus() {
     console.log('[ARGUS] COMMAND VALIDATION PASSED');
     console.log('[ARGUS] REGISTERING CLEAN COMMAND DEFINITIONS — command input is collected through modals...');
 
-    // Register the complete command schemas once. No metadata-only registration.
-    await syncApplicationCommands(commandPayload, 'full-modules');
-
-    // Argus uses guild commands as its single public command scope.
-    // Do NOT mirror the same commands globally: having both global and guild
-    // registrations can make Discord surface duplicate-looking slash commands.
-    // Clear any legacy global registrations left by older Argus deployments.
+    // Connect to Discord FIRST. A command-sync failure must never keep the bot offline.
+    // This also avoids hammering the REST API before the gateway session is established.
     try {
-        const globalEndpoint = 'https://discord.com/api/v10/applications/' + process.env.CLIENT_ID + '/commands';
-        const globalResponse = await fetch(globalEndpoint, {
-            method: 'PUT',
-            headers: {
-                Authorization: 'Bot ' + process.env.DISCORD_TOKEN,
-                'Content-Type': 'application/json'
-            },
-            body: '[]'
-        });
-        const globalText = await globalResponse.text();
-        if (!globalResponse.ok) {
-            console.warn('[ARGUS] GLOBAL COMMAND CLEANUP FAILED:', globalText);
-        } else {
-            console.log('[ARGUS] GLOBAL COMMANDS CLEARED — guild scope is the only public command registry');
-        }
-    } catch (err) {
-        console.warn('[ARGUS] GLOBAL COMMAND CLEANUP SKIPPED:', err?.message || err);
-    }
-
-    console.log('[ARGUS] FULL COMMAND REGISTRATION COMPLETE — all slash-command options are deployed');
-
-    // Gateway startup is independent from REST command registration.
-    void client.login(process.env.DISCORD_TOKEN).then(async () => {
+        await client.login(process.env.DISCORD_TOKEN);
         console.log('[ARGUS] LOGIN RESOLVED — gateway session established');
         await completeArgusStartup('loginResolved');
-        console.log('[ARGUS] STARTUP COMPLETE — bot online and slash commands registered');
-    }).catch((err) => {
+    } catch (err) {
         console.error('[ARGUS] LOGIN FAILED:', err?.stack || err);
         logger.fatal({ err }, 'Argus gateway login failed');
-    });
+        throw err;
+    }
+
+    // Register commands after the bot is connected. Discord may temporarily rate-limit
+    // bulk command overwrites, so sync retries using Discord's retry_after value.
+    try {
+        await syncApplicationCommands(commandPayload, 'full-modules');
+        console.log('[ARGUS] FULL COMMAND REGISTRATION COMPLETE — all slash-command options are deployed');
+    } catch (err) {
+        // Never crash a healthy gateway session just because command registration was rate-limited.
+        console.error('[ARGUS] COMMAND SYNC FAILED — bot will remain online:', err?.stack || err);
+        logger.error({ err }, 'Argus command sync failed; gateway remains online');
+    }
+
+    // Guild commands are Argus's single public command scope.
+    // Global cleanup is opt-in because a PUT [] on every restart wastes the same
+    // Discord application-command rate limit we are trying to protect.
+    if (process.env.CLEAR_GLOBAL_COMMANDS === 'true') {
+        try {
+            const globalEndpoint = 'https://discord.com/api/v10/applications/' + process.env.CLIENT_ID + '/commands';
+            const globalResponse = await discordFetchWith429Retry(globalEndpoint, {
+                method: 'PUT',
+                headers: {
+                    Authorization: 'Bot ' + process.env.DISCORD_TOKEN,
+                    'Content-Type': 'application/json'
+                },
+                body: '[]'
+            }, 'global command cleanup', 4);
+            const globalText = await globalResponse.text();
+
+            if (!globalResponse.ok) {
+                console.warn('[ARGUS] GLOBAL COMMAND CLEANUP FAILED:', globalText);
+            } else {
+                console.log('[ARGUS] GLOBAL COMMANDS CLEARED — guild scope is the only public command registry');
+            }
+        } catch (err) {
+            console.warn('[ARGUS] GLOBAL COMMAND CLEANUP SKIPPED:', err?.message || err);
+        }
+    }
+
+    console.log('[ARGUS] STARTUP COMPLETE — bot is online; command registration is non-fatal');
 }
 
 startArgus().catch((err) => {
