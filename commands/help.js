@@ -23,7 +23,7 @@ const INPUT = 'argus:help:search:query';
 
 const CATEGORY_RULES = [
   ['general','⚙️ General','Bot information and core utilities', ['bot']],
-  ['web','🌐 Web Intelligence','Domains, websites, URLs and network intelligence', ['dns','dork','extract-links','favicon','host-lookup','link-check','redirect-check','web-recon','whois','cert-search','subdomain-enum','wayback-history','web-tech','shodan-lookup','ip-info','ip-reputation']],
+  ['web','🌐 Web Intelligence','Domains, websites, URLs and network intelligence', ['dns','dork','extract-links','favicon','host-lookup','link-check','redirect-check','web-recon','whois','cert-search','subdomain-enum','wayback-history','web-tech','shodan-lookup','ip-info','ip-reputation','scan-urls']],
   ['identity','🔎 Identity Intelligence','Usernames, emails and public identity research', ['company-search','google-investigate','maigret','sherlock','username-gen','avatar-search','email-breach','email-footprint']],
   ['files','📁 File Analysis','Files, metadata, images and blockchain data', ['blockchain','crypto-detect','doc-meta','exif','upload']],
   ['utilities','🛠️ Utilities','AI, monitoring and security tools', ['ai','image-ai','jwt','monitor','nuclei-scan']]
