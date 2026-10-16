@@ -218,7 +218,6 @@ module.exports = {
                 }
             });
             await this.run(modalInteraction);
-            await interaction.editReply({ components: [buildActionMenu()] });
             return true;
         }
         return false;
@@ -371,7 +370,8 @@ async function processSherlockResults(interaction, outputFile, username) {
         // Send final response
         await interaction.editReply({
             content: responseMessage,
-            files: [attachment]
+            files: [attachment],
+            components: [buildActionMenu()]
         });
         
         console.log(`✅ [SHERLOCK] Successfully completed scan for ${username} - ${foundProfiles.length} profiles found`);
