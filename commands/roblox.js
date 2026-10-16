@@ -68,6 +68,8 @@ async function getDiscordUser(client, id) {
 async function run(i,target){
  await i.deferReply();
  const input=String(target).trim();
+ let sourceDiscord=null;
+ let sourceDiscordId=null;
 
  // Discord -> Roblox through the server's Bloxlink verification mapping.
  if (isDiscordId(input) || !/^\d+$/.test(input)) {
@@ -80,7 +82,7 @@ async function run(i,target){
          resolve(String(robloxId)),
          getDiscordUser(i.client,discordId)
        ]);
-       if (base) return runResolved(i,base,{source:'Discord',discord});
+       if (base) { sourceDiscord=discord; sourceDiscordId=discordId; target=String(robloxId); }
      }
      if (isDiscordId(input)) {
        const e=new Error('No linked Roblox account');
@@ -92,7 +94,12 @@ async function run(i,target){
    }
  }
 
- const base=await resolve(input);if(!base){const e=new Error('No results found');e.userMessage='No Roblox account was found for that username or user ID.';throw e}const id=base.id;
+ const base=await resolve(target);if(!base){const e=new Error('No results found');e.userMessage='No Roblox account was found for that username or user ID.';throw e}const id=base.id;
+ const reverse=await bloxlink('/roblox-to-discord/'+encodeURIComponent(id));
+ const reverseIds=reverse?.discordIDs||reverse?.discordIds||reverse?.DiscordIDs||[];
+ const reverseUsers=[];
+ for(const discordId of reverseIds.slice(0,5)) reverseUsers.push(await getDiscordUser(i.client,String(discordId)));
+ const linkedDiscord=sourceDiscord||reverseUsers[0]||null;
  const [p,h,fr,fo,fg,gr,ba,we,av,th,ga,iv,co,pr]=await Promise.all([
   opt('https://users.roblox.com/v1/users/'+id),opt('https://users.roblox.com/v1/users/'+id+'/username-history?limit=100&sortOrder=Desc'),
   opt('https://friends.roblox.com/v1/users/'+id+'/friends/count'),opt('https://friends.roblox.com/v1/users/'+id+'/followers/count'),opt('https://friends.roblox.com/v1/users/'+id+'/followings/count'),
@@ -107,6 +114,7 @@ async function run(i,target){
  const social=[];if(pr)for(const [k,v] of Object.entries(pr))if(v&&typeof v==='string')social.push(k+': '+v);
  const fields=[
  {name:'🔗 Discord correlation',value:linkedUsers.length?linkedUsers.map(u=>'**@'+esc(u.username)+'** — `'+u.id+'`').join('\\n'):'No Bloxlink-linked Discord account returned.'},
+ {name:'🔗 Discord correlation',value:(sourceDiscord||reverseUsers.length)?(sourceDiscord?('**@'+esc(sourceDiscord.username)+'** — `'+sourceDiscord.id+'`'):reverseUsers.map(u=>'**@'+esc(u.username)+'** — `'+u.id+'`').join('\\n')):'No Bloxlink-linked Discord account returned.'},
  {name:'👤 Identity',value:'Username: **'+esc(p?.name||base.name)+'**\nDisplay: **'+esc(p?.displayName||base.displayName||'—')+'**\nUser ID: `'+id+'`\nBanned: **'+(p?.isBanned?'Yes':'No')+'**'},
  {name:'📅 Account',value:'Created: **'+(created?created.toISOString().slice(0,10):'Unknown')+'**'+(days!==null?'\nAge: **'+days.toLocaleString()+' days**':'')+'\nhttps://www.roblox.com/users/'+id+'/profile'},
  {name:'📝 Description',value:esc((p?.description||'No public description.').slice(0,850))},
