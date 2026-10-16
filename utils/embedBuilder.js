@@ -67,11 +67,11 @@ function embedToMarkdown(input) {
   for(const f of e.fields||[]) {
     out.push('', '### '+String(f.name||'Result'), String(f.value||'—'));
   }
+  if(e.footer?.text) out.push('', '-# '+e.footer.text);
   if(e.timestamp) {
     const ts=Math.floor(new Date(e.timestamp).getTime()/1000);
     if(Number.isFinite(ts)) out.push('', '-# 🕒 <t:'+ts+':F>');
   }
-  if(e.footer?.text) out.push('', '-# '+e.footer.text);
   return out.join('\n').slice(0,3900);
 }
 
