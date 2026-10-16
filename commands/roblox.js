@@ -1,10 +1,11 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder } = require('discord.js');
 const { safeShowModal } = require('../utils/interactionHelper');
 const { createArgusEmbed } = require('../utils/embedBuilder');
 const H={'User-Agent':'Argus/2.3',Accept:'application/json'};
 async function req(url,o={}){const r=await fetch(url,{...o,headers:{...H,...(o.headers||{})},signal:AbortSignal.timeout(12000)});if(!r.ok)throw new Error('Roblox API returned '+r.status);return r.json();}
 async function opt(url,o={}){try{return await req(url,o)}catch{return null}}
 const esc=s=>String(s??'').replace(/([\\`*_{}\[\]()#+\-.!|>])/g,'\\$1');
+async function assetName(id){const data=await opt('https://economy.roblox.com/v2/assets/'+id+'/details');return data?.Name||data?.name||null;}
 const bullets=(a,fn,n=12)=>a?.length?a.slice(0,n).map(x=>'• '+fn(x)).join('\n'):'None found';
 async function resolve(q){q=String(q).trim();const body=/^\d+$/.test(q)?{userIds:[Number(q)],excludeBannedUsers:false}:{usernames:[q],excludeBannedUsers:false};return (await req(/^\d+$/.test(q)?'https://users.roblox.com/v1/users':'https://users.roblox.com/v1/usernames/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).data?.[0]}
 
@@ -65,7 +66,7 @@ async function getDiscordUser(client, id) {
   }
 }
 
-async function run(i,target){
+async function run(i,target,mode='roblox'){
  await i.deferReply();
  const input=String(target).trim();
  let sourceDiscord=null;
@@ -135,4 +136,64 @@ async function run(i,target){
  const buttons=[new ButtonBuilder().setCustomId('argus:roblox:friend-search:'+id).setLabel('Search a friend').setStyle(ButtonStyle.Primary),new ButtonBuilder().setURL('https://www.roblox.com/users/'+id+'/profile').setLabel('Roblox profile').setStyle(ButtonStyle.Link)];
  await i.editReply({embeds:[createArgusEmbed({title:'🎮 Roblox Intelligence',description:'Deep public Roblox intelligence for **'+esc(p?.name||base.name)+'**.',fields,thumbnail:pic,url:'https://www.roblox.com/users/'+id+'/profile'},{commandName:'roblox'})],components:[new ActionRowBuilder().addComponents(buttons)]});
 }
-module.exports={data:new SlashCommandBuilder().setName('roblox').setDescription('Correlate public Discord and Roblox account information'),async execute(i){return safeShowModal(i,new ModalBuilder().setCustomId('argus:roblox:modal').setTitle('Discord ↔ Roblox Intelligence').addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('source').setLabel('Lookup type: discord or roblox').setPlaceholder('discord or roblox').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(7)),new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('target').setLabel('Username or ID').setPlaceholder('Discord username/ID • Roblox username/ID').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(64))))},async handleInteraction(i){if(i.isButton?.()&&i.customId.startsWith('argus:roblox:friend-search:')){return safeShowModal(i,new ModalBuilder().setCustomId('argus:roblox:friend-modal').setTitle('Search Roblox friend').addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('friend').setLabel('Friend username or ID').setPlaceholder('Enter a Roblox username or ID').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(64))))}if(i.isModalSubmit?.()&&i.customId==='argus:roblox:friend-modal'){await run(i,i.fields.getTextInputValue('friend'),'roblox');return true}if(!i.isModalSubmit?.()||i.customId!=='argus:roblox:modal')return false;const source=i.fields.getTextInputValue('source').trim().toLowerCase();if(!['discord','roblox'].includes(source))return i.reply({content:'Lookup type must be `discord` or `roblox`.',ephemeral:true});await run(i,i.fields.getTextInputValue('target'),source);return true}};
+module.exports={
+ data:new SlashCommandBuilder()
+  .setName('roblox')
+  .setDescription('Correlate public Discord and Roblox account information'),
+ async execute(i){
+   return i.reply({
+     embeds:[createArgusEmbed({
+       title:'🎮 Roblox Intelligence',
+       description:'Choose what you want Argus to look up.',
+       fields:[{name:'Lookup type',value:'Select **Discord → Roblox** to use a Discord account, or **Roblox profile** to look up a Roblox username or ID.'}]
+     },{commandName:'roblox'})],
+     components:[new ActionRowBuilder().addComponents(
+       new StringSelectMenuBuilder()
+        .setCustomId('argus:roblox:type')
+        .setPlaceholder('Choose a lookup type')
+        .addOptions(
+          {label:'Discord → Roblox',description:'Find the Roblox account linked through Bloxlink',value:'discord',emoji:'🔗'},
+          {label:'Roblox profile',description:'Look up a Roblox username or user ID',value:'roblox',emoji:'🎮'}
+        )
+     )]
+   });
+ },
+ async handleInteraction(i){
+   if(i.isButton?.()&&i.customId.startsWith('argus:roblox:friend-search:')){
+     return safeShowModal(i,new ModalBuilder().setCustomId('argus:roblox:friend-modal').setTitle('Search Roblox Friend').addComponents(
+       new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('friend').setLabel('Roblox username or ID').setPlaceholder('Example: Builderman or 156').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(64))
+     ));
+   }
+
+   if(i.isStringSelectMenu?.()&&i.customId==='argus:roblox:type'){
+     const mode=i.values?.[0];
+     if(!['discord','roblox'].includes(mode)) return true;
+     return safeShowModal(i,new ModalBuilder()
+       .setCustomId('argus:roblox:modal:'+mode)
+       .setTitle(mode==='discord'?'Discord → Roblox':'Roblox Profile')
+       .addComponents(new ActionRowBuilder().addComponents(
+         new TextInputBuilder()
+          .setCustomId('target')
+          .setLabel(mode==='discord'?'Discord username or ID':'Roblox username or ID')
+          .setPlaceholder(mode==='discord'?'Example: benzyplug or 123456789':'Example: Builderman or 156')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(64)
+       ))
+     );
+   }
+
+   if(i.isModalSubmit?.()&&i.customId==='argus:roblox:friend-modal'){
+     await run(i,i.fields.getTextInputValue('friend'),'roblox');
+     return true;
+   }
+
+   if(i.isModalSubmit?.()&&i.customId.startsWith('argus:roblox:modal:')){
+     const mode=i.customId.split(':').pop();
+     await run(i,i.fields.getTextInputValue('target'),mode);
+     return true;
+   }
+
+   return false;
+ }
+};
