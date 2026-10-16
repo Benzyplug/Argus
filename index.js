@@ -383,7 +383,7 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 
-    const autoModal = buildAutoModal(command);
+    const autoModal = command.nativeOptions ? null : buildAutoModal(command);
     if (autoModal) {
         try {
             await interaction.showModal(autoModal);
@@ -448,7 +448,7 @@ async function startArgus() {
         throw new Error('One or more command modules failed to load');
     }
 
-    const commandPayload = [...client.commands.values()].map(command => { const payload = command.data.toJSON(); delete payload.options; return payload; });
+    const commandPayload = [...client.commands.values()].map(command => { const payload = command.data.toJSON(); if (!command.nativeOptions) delete payload.options; return payload; });
     bootstrap.validateCommandPayloads(commandPayload);
     console.log('[ARGUS] COMMAND VALIDATION PASSED');
     console.log('[ARGUS] REGISTERING CLEAN COMMAND DEFINITIONS — command input is collected through modals...');
