@@ -510,6 +510,22 @@ async function startArgus() {
         // Never crash a healthy gateway session just because command registration was rate-limited.
         console.error('[ARGUS] COMMAND SYNC FAILED — bot will remain online:', err?.stack || err);
         logger.error({ err }, 'Argus command sync failed; gateway remains online');
+
+        // Keep retrying in the background. This is important when Discord has a
+        // temporary application-command rate limit: a restart should not be
+        // required just to make a newly added command (such as /dm) appear.
+        const retryCommandSync = async () => {
+            try {
+                console.log('[ARGUS] BACKGROUND COMMAND SYNC RETRY...');
+                await syncApplicationCommands(commandPayload, 'background-retry');
+                console.log('[ARGUS] BACKGROUND COMMAND SYNC SUCCEEDED');
+            } catch (retryErr) {
+                console.error('[ARGUS] BACKGROUND COMMAND SYNC FAILED — will retry in 60s:', retryErr?.message || retryErr);
+                setTimeout(retryCommandSync, 60000).unref?.();
+            }
+        };
+
+        setTimeout(retryCommandSync, 60000).unref?.();
     }
 
     // Guild commands are Argus's single public command scope.
