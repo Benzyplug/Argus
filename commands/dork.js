@@ -162,7 +162,6 @@ Use these URLs with browser extensions like "Open Multiple URLs" to open them al
                 }
             });
             await this.run(modalInteraction);
-            await interaction.editReply({ components: [buildActionMenu()] });
             return true;
         }
         return false;
