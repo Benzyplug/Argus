@@ -6,6 +6,7 @@ const {
   TextDisplayBuilder,
   SeparatorBuilder,
   SeparatorSpacingSize,
+  SectionBuilder,
   MessageFlags
 } = require('discord.js');
 const pkg = require('../package.json');
@@ -41,7 +42,7 @@ function targetFromInteraction(interaction) {
 }
 
 function createArgusEmbed(config = {}, context = {}) {
-  const embed = new EmbedBuilder().setColor(config.color ?? COLORS[categoryFor(context.commandName)] ?? COLORS.general);
+  const embed = new EmbedBuilder().setColor(config.color ?? COLORS[categoryFor(context.commandName)] ?? COLORS.general).setTimestamp(config.timestamp || new Date());
   if (config.title) embed.setTitle(String(config.title).slice(0,256));
   if (config.description) embed.setDescription(String(config.description).slice(0,4096));
   if (Array.isArray(config.fields)&&config.fields.length) embed.addFields(config.fields.slice(0,25));
@@ -54,7 +55,6 @@ function createArgusEmbed(config = {}, context = {}) {
 
 function styleEmbed(input, context={}) {
   const json=input instanceof EmbedBuilder?input.toJSON():{...input};
-  delete json.timestamp;
   return new EmbedBuilder(json).setColor(json.color||COLORS[categoryFor(context.commandName)]||COLORS.general);
 }
 
@@ -66,6 +66,10 @@ function embedToMarkdown(input) {
   if(e.description) out.push(e.description);
   for(const f of e.fields||[]) {
     out.push('', '### '+String(f.name||'Result'), String(f.value||'—'));
+  }
+  if(e.timestamp) {
+    const ts=Math.floor(new Date(e.timestamp).getTime()/1000);
+    if(Number.isFinite(ts)) out.push('', '-# 🕒 <t:'+ts+':F>');
   }
   if(e.footer?.text) out.push('', '-# '+e.footer.text);
   return out.join('\n').slice(0,3900);
@@ -93,6 +97,7 @@ function stylePayload(payload, context={}) {
 
   const original = typeof payload==='string'?{}:{...(payload||{})};
   const text=payloadText(payload,context);
+  const firstEmbed=original.embeds?.[0];
   const rows=(original.components||[]).filter(c=>c?.data?.type===1 || c?.toJSON?.().type===1);
 
   const container=new ContainerBuilder()
