@@ -237,6 +237,11 @@ module.exports = {
         { name: '🌐 Scanned', value: String(urls.length), inline: true },
         { name: '🎯 Matches', value: String(matches.length), inline: true },
         { name: '⚠️ Failed', value: String(failures.length), inline: true },
+        ...(matches.length ? [{
+          name: '🔗 Matching URLs',
+          value: matches.slice(0, 10).map((result, index) => (index + 1) + '. ' + result.url).join('\\n').slice(0, 1024),
+          inline: false
+        }] : []),
         { name: '⚡ Mode', value: CONCURRENCY + ' concurrent requests • ' + (caseSensitive ? 'case-sensitive' : 'case-insensitive'), inline: false }
       ]
     }, { commandName: 'scan-urls', client: interaction.client });
