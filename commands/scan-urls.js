@@ -29,30 +29,27 @@ function isBlockedHostname(hostname) {
 }
 
 function normalizeUrls(text) {
-  const raw = String(text || '')
-    .replace(/^\uFEFF/, '')
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean);
+  const source = String(text || '').replace(/^\uFEFF/, '');
+  let raw = source.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+
+  try {
+    const parsed = JSON.parse(source);
+    if (Array.isArray(parsed)) {
+      raw = parsed.map(value => String(value)).filter(Boolean);
+    } else if (parsed && Array.isArray(parsed.urls)) {
+      raw = parsed.urls.map(value => String(value)).filter(Boolean);
+    }
+  } catch {}
 
   const urls = [];
   const seen = new Set();
 
-  for (const original of raw) {
-    let line = original;
+  for (let line of raw) {
     if (line.startsWith('#')) continue;
 
-    if (line.startsWith('[') && line.endsWith(']')) {
-      try {
-        const parsed = JSON.parse(line);
-        if (Array.isArray(parsed)) {
-          for (const value of parsed) line = String(value);
-        }
-      } catch {}
-    }
-
     if (line.includes(',') && !/^https?:\/\//i.test(line)) {
-      line = line.split(',')[0].trim();
+      const csvUrl = line.match(/https?:\/\/[^\s,"']+/i);
+      line = csvUrl ? csvUrl[0] : line.split(',')[0].trim();
     }
 
     const match = line.match(/https?:\/\/[^\s,"']+/i);
