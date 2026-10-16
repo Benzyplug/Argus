@@ -107,8 +107,40 @@ function stylePayload(payload, context={}) {
         new MediaGalleryItemBuilder().setURL(ARGUS_BANNER_URL).setDescription('ARGUS')
       )
     )
-    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
-    .addTextDisplayComponents(new TextDisplayBuilder().setContent(text));
+    .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
+
+  if(firstEmbed?.thumbnail?.url && (firstEmbed.title || firstEmbed.description)) {
+    const header=[
+      firstEmbed.title ? '# '+firstEmbed.title : '',
+      firstEmbed.description || ''
+    ].filter(Boolean).join('\\n');
+
+    container.addSectionComponents(
+      new SectionBuilder()
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(header.slice(0,1800))
+        )
+        .setThumbnailAccessory(
+          thumbnail => thumbnail
+            .setURL(firstEmbed.thumbnail.url)
+            .setDescription('Profile image')
+        )
+    );
+
+    const rest=text
+      .replace(firstEmbed.title ? '# '+firstEmbed.title : '', '')
+      .replace(firstEmbed.description || '', '')
+      .replace(/^\\n+/, '')
+      .trim();
+
+    if(rest) {
+      container
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(rest.slice(0,2000)));
+    }
+  } else {
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(text));
+  }
 
   if(rows.length) {
     container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small));
