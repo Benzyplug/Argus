@@ -255,9 +255,6 @@ module.exports = {
             }
         };
 
-        const originalReply = interaction.reply.bind(interaction);
-        const originalEditReply = interaction.editReply.bind(interaction);
-        const originalFollowUp = interaction.followUp.bind(interaction);
         const execution = new Proxy(interaction, {
             get(target, property, receiver) {
                 if (property === 'commandName') return 'ai';
@@ -281,11 +278,12 @@ module.exports = {
  * @returns {Promise<Object>} Response object
  */
 async function handleChatRequest(interaction, userId, apiKey) {
-    const message = interaction.options.getString('message');
+    const message = interaction.options.getString('prompt') || interaction.options.getString('message');
     const model = interaction.options.getString('model') || 'qwen3-vl-flash';
     const context = interaction.options.getString('context') || 'general';
 
     // Sanitize message using chat-friendly sanitizer (preserves brackets/parens)
+    if (!message) { const e = new Error('Prompt is required'); e.userMessage = 'Enter a prompt before running AI Ask.'; throw e; }
     const cleanMessage = sanitizeChatInput(message);
 
     // Get or create conversation
