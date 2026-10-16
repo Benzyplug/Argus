@@ -35,9 +35,14 @@ const { saveReport } = require('../utils/reports');
 const fsPromises = require('fs').promises;
 
 module.exports = {
+    nativeOptions: true,
     data: new SlashCommandBuilder()
         .setName('exif')
-        .setDescription('Extract comprehensive EXIF metadata from an image URL')
+        .setDescription('Extract comprehensive EXIF metadata from an image URL or upload')
+        .addAttachmentOption(option =>
+            option.setName('image')
+                .setDescription('Upload an image to analyze')
+                .setRequired(false))
         .addStringOption(option =>
             option.setName('url')
                 .setDescription('Direct URL to the image file')
@@ -59,12 +64,20 @@ module.exports = {
     async execute(interaction) {
         try {
             // Get and validate URL input
+            const attachment = interaction.options.getAttachment('image');
             const rawUrl = interaction.options.getString('url');
-            const imageUrl = sanitizeInput(rawUrl);
+            const imageUrl = sanitizeInput(attachment?.url || rawUrl || '');
             const includeDetailed = interaction.options.getBoolean('detailed') ?? true;
             const privacyMode = interaction.options.getBoolean('privacy-mode') ?? false;
             
             // Validate URL format
+            if (!attachment && !rawUrl) {
+                return interaction.reply({
+                    content: '❌ **Missing Image**\nPlease provide an image URL or upload an image.',
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
             if (!isValidUrl(imageUrl)) {
                 return interaction.reply({
                     content: '❌ **Invalid URL Format**\n' +
