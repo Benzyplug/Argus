@@ -47,6 +47,7 @@ function getRekognitionClient() {
 }
 
 module.exports = {
+    nativeOptions: true,
     data: new SlashCommandBuilder()
         .setName('image-ai')
         .setDescription('Analyze images using AWS Rekognition')
