@@ -484,7 +484,30 @@ async function startArgus() {
         throw new Error('One or more command modules failed to load');
     }
 
-    const commandPayload = [...client.commands.values()].map(command => { const payload = command.data.toJSON(); if (!command.nativeOptions) delete payload.options; return payload; });
+    const commandPayload = [...client.commands.values()].map(command => {
+        const payload = command.data.toJSON();
+        if (!command.nativeOptions) delete payload.options;
+        return payload;
+    });
+
+    // Discord requires required options to come before optional options.
+    // Keep this normalization at the final registration boundary so one
+    // malformed command definition cannot block the entire 39-command sync.
+    const normalizeOptions = (options) => {
+        if (!Array.isArray(options)) return options;
+        const normalized = [...options]
+            .map(option => ({
+                ...option,
+                options: normalizeOptions(option.options)
+            }))
+            .sort((a, b) => Number(Boolean(b.required)) - Number(Boolean(a.required)));
+        return normalized;
+    };
+
+    for (const payload of commandPayload) {
+        payload.options = normalizeOptions(payload.options);
+    }
+
     bootstrap.validateCommandPayloads(commandPayload);
     console.log('[ARGUS] COMMAND VALIDATION PASSED');
     console.log('[ARGUS] REGISTERING CLEAN COMMAND DEFINITIONS — command input is collected through modals...');
