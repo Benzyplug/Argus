@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { safeShowModal } = require('../utils/interactionHelper');
 const { createArgusEmbed } = require('../utils/embedBuilder');
 const H={'User-Agent':'Argus/2.3',Accept:'application/json'};
@@ -100,17 +100,20 @@ async function run(i,target){
  const reverseUsers=[];
  for(const discordId of reverseIds.slice(0,5)) reverseUsers.push(await getDiscordUser(i.client,String(discordId)));
  const linkedDiscord=sourceDiscord||reverseUsers[0]||null;
- const [p,h,fr,fo,fg,gr,ba,we,av,th,ga,iv,co,pr]=await Promise.all([
+ const [p,h,fr,fo,fg,friendData,gr,ba,we,av,th,ga,iv,co,pr,presence]=await Promise.all([
   opt('https://users.roblox.com/v1/users/'+id),opt('https://users.roblox.com/v1/users/'+id+'/username-history?limit=100&sortOrder=Desc'),
   opt('https://friends.roblox.com/v1/users/'+id+'/friends/count'),opt('https://friends.roblox.com/v1/users/'+id+'/followers/count'),opt('https://friends.roblox.com/v1/users/'+id+'/followings/count'),
-  opt('https://groups.roblox.com/v2/users/'+id+'/groups/roles'),opt('https://accountinformation.roblox.com/v1/users/'+id+'/roblox-badges'),
+  opt('https://friends.roblox.com/v1/users/'+id+'/friends?limit=100&sortOrder=Asc'),
+  opt('https://groups.roblox.com/v2/users/'+id+'/groups/roles'),opt('https://badges.roblox.com/v1/users/'+id+'/badges?limit=100&sortOrder=Desc'),
   opt('https://avatar.roblox.com/v1/users/'+id+'/currently-wearing'),opt('https://avatar.roblox.com/v1/users/'+id+'/avatar'),
   opt('https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds='+id+'&size=420x420&format=Png&isCircular=false'),
   opt('https://games.roblox.com/v2/users/'+id+'/games?accessFilter=Public&limit=50&sortOrder=Desc'),opt('https://inventory.roblox.com/v1/users/'+id+'/can-view-inventory'),
-  opt('https://inventory.roblox.com/v1/users/'+id+'/assets/collectibles?sortOrder=Desc&limit=100'),opt('https://accountinformation.roblox.com/v1/users/'+id+'/promotion-channels')
+  opt('https://inventory.roblox.com/v1/users/'+id+'/assets/collectibles?sortOrder=Desc&limit=100'),opt('https://accountinformation.roblox.com/v1/users/'+id+'/promotion-channels'),
+  opt('https://presence.roblox.com/v1/presence/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userIds:[Number(id)]})})
  ]);
  const created=p?.created?new Date(p.created):null, days=created?Math.floor((Date.now()-created.getTime())/86400000):null;
- const groups=gr?.data||[], badges=Array.isArray(ba)?ba:(ba?.data||[]), games=ga?.data||[], old=h?.data||[], coll=co?.data||[];
+ const groups=gr?.data||[], badges=Array.isArray(ba)?ba:(ba?.data||[]), games=ga?.data||[], old=h?.data||[], coll=co?.data||[], friends=friendData?.data||[], presenceRow=presence?.userPresences?.[0]||null;
+ const wornIds=(we?.assetIds||[]).slice(0,25), wornNames=await Promise.all(wornIds.map(async id=>({id,name:await assetName(id)})));
  const social=[];if(pr)for(const [k,v] of Object.entries(pr))if(v&&typeof v==='string')social.push(k+': '+v);
  const fields=[
  {name:'🔗 Discord correlation',value:(sourceDiscord||reverseUsers.length)?(sourceDiscord?('**@'+esc(sourceDiscord.username)+'** — `'+sourceDiscord.id+'`'):reverseUsers.map(u=>'**@'+esc(u.username)+'** — `'+u.id+'`').join('\\n')):'No Bloxlink-linked Discord account returned.'},
@@ -120,13 +123,14 @@ async function run(i,target){
  {name:'🕰️ Previous usernames',value:bullets(old,x=>'`'+esc(x.name)+'`',20)},
  {name:'👥 Social graph',value:'Friends: **'+(fr?.count??'Unknown')+'**\nFollowers: **'+(fo?.count??'Unknown')+'**\nFollowing: **'+(fg?.count??'Unknown')+'**'},
  {name:'🏛️ Groups & roles',value:bullets(groups,x=>'**'+esc(x.group?.name||'Group')+'** — '+esc(x.role?.name||'Member')+' (rank '+(x.role?.rank??'?')+')',15)},
- {name:'🏅 Roblox badges',value:bullets(badges,x=>esc(x.name||x),12)},
+ {name:'🏅 Roblox badges',value:badges.length?badges.slice(0,20).map(x=>'• **'+esc(x.name||'Badge')+'**'+(x.description?' — '+esc(x.description).slice(0,120):'')+(x.awardedDate?' · <t:'+Math.floor(new Date(x.awardedDate).getTime()/1000)+':d>':'')).join('\\n'):'No public badges returned.'},
  {name:'🎮 Created experiences',value:bullets(games,x=>esc(x.name||'Experience')+(x.rootPlace?.id?' — https://www.roblox.com/games/'+x.rootPlace.id:''),12)},
  {name:'👕 Avatar intelligence',value:'Wearing asset IDs: '+((we?.assetIds||[]).slice(0,25).map(x=>'`'+x+'`').join(', ')||'None returned')+'\nAvatar type: **'+esc(av?.playerAvatarType||av?.avatarType||'Unknown')+'**'},
  {name:'💎 Inventory / collectibles',value:'Inventory visible: **'+(iv?.canView===true?'Yes':iv?.canView===false?'No':'Unknown')+'**\nCollectibles returned: **'+coll.length+'**'+(coll.length?'\n'+bullets(coll,x=>esc(x.name||('Asset '+x.assetId)),8):'')},
  {name:'🔗 Promotion channels',value:social.length?esc(social.join('\n').slice(0,850)):'None exposed publicly.'}
  ];
  const pic=th?.data?.[0]?.imageUrl||linkedDiscord?.avatar;
- await i.editReply({embeds:[createArgusEmbed({title:'🎮 Roblox Intelligence',description:'Deep public Roblox intelligence for **'+esc(p?.name||base.name)+'**.',fields,thumbnail:pic,url:'https://www.roblox.com/users/'+id+'/profile'},{commandName:'roblox'})]});
+ const buttons=[new ButtonBuilder().setCustomId('argus:roblox:friend-search:'+id).setLabel('Search a friend').setStyle(ButtonStyle.Primary),new ButtonBuilder().setURL('https://www.roblox.com/users/'+id+'/profile').setLabel('Roblox profile').setStyle(ButtonStyle.Link)];
+ await i.editReply({embeds:[createArgusEmbed({title:'🎮 Roblox Intelligence',description:'Deep public Roblox intelligence for **'+esc(p?.name||base.name)+'**.',fields,thumbnail:pic,url:'https://www.roblox.com/users/'+id+'/profile'},{commandName:'roblox'})],components:[new ActionRowBuilder().addComponents(buttons)]});
 }
-module.exports={data:new SlashCommandBuilder().setName('roblox').setDescription('Correlate public Discord and Roblox account information'),async execute(i){return safeShowModal(i,new ModalBuilder().setCustomId('argus:roblox:modal').setTitle('Discord ↔ Roblox Intelligence').addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('target').setLabel('Discord ID / username OR Roblox username / ID').setPlaceholder('Discord: 123...  •  Roblox: Builderman / 156').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(64))))},async handleInteraction(i){if(!i.isModalSubmit?.()||i.customId!=='argus:roblox:modal')return false;await run(i,i.fields.getTextInputValue('target'));return true}};
+module.exports={data:new SlashCommandBuilder().setName('roblox').setDescription('Correlate public Discord and Roblox account information'),async execute(i){return safeShowModal(i,new ModalBuilder().setCustomId('argus:roblox:modal').setTitle('Discord ↔ Roblox Intelligence').addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('target').setLabel('Discord ID / username OR Roblox username / ID').setPlaceholder('Discord: 123...  •  Roblox: Builderman / 156').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(64))))},async handleInteraction(i){if(i.isButton?.()&&i.customId.startsWith('argus:roblox:friend-search:')){return safeShowModal(i,new ModalBuilder().setCustomId('argus:roblox:friend-modal').setTitle('Search Roblox friend').addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('friend').setLabel('Friend username or ID').setPlaceholder('Enter a Roblox username or ID').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(64))))}if(i.isModalSubmit?.()&&i.customId==='argus:roblox:friend-modal'){await run(i,i.fields.getTextInputValue('friend'));return true}if(!i.isModalSubmit?.()||i.customId!=='argus:roblox:modal')return false;await run(i,i.fields.getTextInputValue('target'));return true}};
