@@ -113,7 +113,6 @@ async function run(i,target){
  const groups=gr?.data||[], badges=Array.isArray(ba)?ba:(ba?.data||[]), games=ga?.data||[], old=h?.data||[], coll=co?.data||[];
  const social=[];if(pr)for(const [k,v] of Object.entries(pr))if(v&&typeof v==='string')social.push(k+': '+v);
  const fields=[
- {name:'🔗 Discord correlation',value:linkedUsers.length?linkedUsers.map(u=>'**@'+esc(u.username)+'** — `'+u.id+'`').join('\\n'):'No Bloxlink-linked Discord account returned.'},
  {name:'🔗 Discord correlation',value:(sourceDiscord||reverseUsers.length)?(sourceDiscord?('**@'+esc(sourceDiscord.username)+'** — `'+sourceDiscord.id+'`'):reverseUsers.map(u=>'**@'+esc(u.username)+'** — `'+u.id+'`').join('\\n')):'No Bloxlink-linked Discord account returned.'},
  {name:'👤 Identity',value:'Username: **'+esc(p?.name||base.name)+'**\nDisplay: **'+esc(p?.displayName||base.displayName||'—')+'**\nUser ID: `'+id+'`\nBanned: **'+(p?.isBanned?'Yes':'No')+'**'},
  {name:'📅 Account',value:'Created: **'+(created?created.toISOString().slice(0,10):'Unknown')+'**'+(days!==null?'\nAge: **'+days.toLocaleString()+' days**':'')+'\nhttps://www.roblox.com/users/'+id+'/profile'},
