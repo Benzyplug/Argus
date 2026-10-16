@@ -230,7 +230,6 @@ module.exports = {
                 }
             });
             await this.run(modalInteraction);
-            await interaction.editReply({ components: [buildActionMenu()] });
             return true;
         }
         return false;
