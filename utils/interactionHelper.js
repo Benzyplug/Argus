@@ -20,17 +20,54 @@ function shouldBePrivate(commandName = '') {
   return PRIVATE_COMMANDS.has(String(commandName).toLowerCase());
 }
 
+function componentText(value, out = []) {
+  if (!value) return out;
+
+  if (Array.isArray(value)) {
+    for (const item of value) componentText(item, out);
+    return out;
+  }
+
+  if (typeof value !== 'object') return out;
+
+  const data = value.data || value;
+
+  if (typeof data.content === 'string' && data.content.trim()) {
+    out.push(data.content.trim());
+  }
+
+  if (data.components) componentText(data.components, out);
+  if (data.accessory) componentText(data.accessory, out);
+
+  return out;
+}
+
 function cloneForResponseLog(payload) {
-  if (typeof payload === 'string') return { content: payload };
+  if (typeof payload === 'string') return { content: payload.slice(0, 2000) };
   if (!payload || typeof payload !== 'object') return null;
 
   const copy = {};
-  if (payload.content) copy.content = payload.content;
-  if (payload.embeds?.length) copy.embeds = payload.embeds;
-  if (payload.files?.length) copy.files = payload.files;
 
-  // Components are intentionally omitted so controls cannot be used from the log channel.
-  return copy.content || copy.embeds?.length || copy.files?.length ? copy : null;
+  if (payload.content) copy.content = String(payload.content).slice(0, 2000);
+  if (payload.embeds?.length) copy.embeds = payload.embeds;
+
+  // Components are never copied because buttons/selects in the audit channel
+  // must not be usable there. For Components V2 responses, preserve their
+  // visible text so the audit channel mirrors the actual result instead of
+  // posting the generated output file as the only visible information.
+  if (!copy.content && payload.components?.length) {
+    const text = [...new Set(componentText(payload.components))]
+      .join('\n\n')
+      .trim();
+
+    if (text) copy.content = text.slice(0, 2000);
+  }
+
+  // Do NOT mirror generated/input attachments. In particular, commands such
+  // as /scan-urls may attach a full result file; the audit channel should show
+  // the same visible result text, not dump the file contents into the channel.
+
+  return copy.content || copy.embeds?.length ? copy : null;
 }
 
 async function mirrorResponse(client, interaction, payload) {
@@ -78,7 +115,6 @@ function installArgusResponses(interaction, client) {
   const context = { interaction, client, commandName };
 
   interaction.deferReply = async (options = {}) => {
-    // Components V2 loading card: banner media header + content in one container.
     const payload = loadingPayload(interaction, commandName);
     if (options.ephemeral !== undefined) {
       if (options.ephemeral) payload.flags |= MessageFlags.Ephemeral;
@@ -86,34 +122,45 @@ function installArgusResponses(interaction, client) {
       payload.flags |= Number(options.flags) || 0;
     }
     if (shouldBePrivate(commandName)) payload.flags |= MessageFlags.Ephemeral;
-    return originalReply(payload);
+
+    const response = await originalReply(payload);
+    await mirrorResponse(client, interaction, payload);
+    return response;
   };
 
   interaction.reply = async (options = {}) => {
     const raw = Boolean(options?.__argusRaw);
     const cleanOptions = raw ? { ...options } : options;
     if (raw) delete cleanOptions.__argusRaw;
+
     if (interaction.deferred && !interaction.replied) {
       const payload = raw ? cleanOptions : sanitizeEditPayload(stylePayload(cleanOptions, context));
       const response = await originalEditReply(sanitizeEditPayload(payload));
-      if (!shouldBePrivate(commandName)) await mirrorResponse(client, interaction, payload);
+      await mirrorResponse(client, interaction, payload);
       return response;
     }
+
     if (interaction.replied) {
       const styledFollow = raw ? cleanOptions : stylePayload(cleanOptions, context);
       const followOptions = { ...styledFollow, ...(styledFollow.components?.length ? { fetchReply: true } : {}) };
-      if (shouldBePrivate(commandName)) followOptions.flags = (Number(followOptions.flags) || 0) | MessageFlags.Ephemeral;
+      if (shouldBePrivate(commandName)) {
+        followOptions.flags = (Number(followOptions.flags) || 0) | MessageFlags.Ephemeral;
+      }
       const response = await originalFollowUp(followOptions);
       rememberComponentOwner(response, interaction.user?.id);
       await mirrorResponse(client, interaction, styledFollow);
       return response;
     }
+
     const styled = raw ? cleanOptions : stylePayload(cleanOptions, context);
     const replyOptions = { ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) };
-    if (shouldBePrivate(commandName)) replyOptions.flags = (Number(replyOptions.flags) || 0) | MessageFlags.Ephemeral;
+    if (shouldBePrivate(commandName)) {
+      replyOptions.flags = (Number(replyOptions.flags) || 0) | MessageFlags.Ephemeral;
+    }
+
     const response = await originalReply(replyOptions);
     rememberComponentOwner(response, interaction.user?.id);
-    if (!shouldBePrivate(commandName)) await mirrorResponse(client, interaction, styled);
+    await mirrorResponse(client, interaction, styled);
     return response;
   };
 
@@ -121,17 +168,20 @@ function installArgusResponses(interaction, client) {
     const styled = stylePayload(options, context);
     const response = await originalEditReply(sanitizeEditPayload(styled));
     rememberComponentOwner(response, interaction.user?.id);
-    if (!shouldBePrivate(commandName)) await mirrorResponse(client, interaction, styled);
+    await mirrorResponse(client, interaction, styled);
     return response;
   };
 
   interaction.followUp = async (options = {}) => {
     const styled = stylePayload(options, context);
     const followOptions = { ...styled, ...(styled.components?.length ? { fetchReply: true } : {}) };
-    if (shouldBePrivate(commandName)) followOptions.flags = (Number(followOptions.flags) || 0) | MessageFlags.Ephemeral;
+    if (shouldBePrivate(commandName)) {
+      followOptions.flags = (Number(followOptions.flags) || 0) | MessageFlags.Ephemeral;
+    }
+
     const response = await originalFollowUp(followOptions);
     rememberComponentOwner(response, interaction.user?.id);
-    if (!shouldBePrivate(commandName)) await mirrorResponse(client, interaction, styled);
+    await mirrorResponse(client, interaction, styled);
     return response;
   };
 }
