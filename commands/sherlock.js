@@ -249,19 +249,49 @@ async function executeSherlockScan(sherlockPath, username, outputFile, timeout, 
     if (verbose) args.push('--verbose');
     if (includeNsfw) args.push('--nsfw');
 
-    const result = await safeSpawnToFile(command, args, outputFile, {
-        timeout: timeout * 1000,
-        env: { ...getSafeEnv(), PYTHONUNBUFFERED: '1' }
-    });
+    let result;
+    try {
+        result = await safeSpawnToFile(command, args, outputFile, {
+            timeout: timeout * 1000,
+            env: { ...getSafeEnv(), PYTHONUNBUFFERED: '1' }
+        });
+    } catch (error) {
+        if (error?.code === 'ENOENT' || /no module named|failed to start process|not found/i.test(String(error?.message || '') + ' ' + String(error?.stderr || ''))) {
+            return fallbackUsernameScan(username, outputFile);
+        }
+        throw error;
+    }
 
     if (result.code !== 0) {
-        const detail = result.stderr?.trim();
+        const detail = result.stderr?.trim() || '';
+        if (/no module named|not found/i.test(detail)) return fallbackUsernameScan(username, outputFile);
         const error = new Error(detail || `Sherlock exited with code ${result.code}`);
         error.code = result.code;
         throw error;
     }
 
     return result;
+}
+
+async function fallbackUsernameScan(username, outputFile) {
+    const encoded = encodeURIComponent(username);
+    const found = [];
+    const checkJson = async (platform, url, profile, validate) => {
+        try {
+            const response = await fetch(url, { headers: { 'User-Agent': 'Argus/2.3', Accept: 'application/json' }, signal: AbortSignal.timeout(10000) });
+            if (!response.ok) return;
+            const data = await response.json();
+            if (validate(data)) found.push('[+] ' + platform + ': ' + profile);
+        } catch {}
+    };
+    await Promise.all([
+        checkJson('GitHub', 'https://api.github.com/users/' + encoded, 'https://github.com/' + encoded, d => Boolean(d?.login)),
+        checkJson('Reddit', 'https://www.reddit.com/user/' + encoded + '/about.json', 'https://www.reddit.com/user/' + encoded, d => Boolean(d?.data?.name)),
+        checkJson('GitLab', 'https://gitlab.com/api/v4/users?username=' + encoded, 'https://gitlab.com/' + encoded, d => Array.isArray(d) && d.some(x => String(x.username || '').toLowerCase() === username.toLowerCase())),
+        checkJson('TikTok', 'https://www.tiktok.com/oembed?url=' + encodeURIComponent('https://www.tiktok.com/@' + username), 'https://www.tiktok.com/@' + encoded, d => Boolean(d?.author_url))
+    ]);
+    await fs.writeFile(outputFile, found.join('\n') + (found.length ? '\n' : ''), 'utf8');
+    return { code: 0, stderr: '', fallback: true };
 }
 
 /**
