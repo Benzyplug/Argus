@@ -9,7 +9,8 @@ const RESTRICTED_COMMANDS = {
     'sherlock': PermissionFlagsBits.ManageGuild,
     'maigret': PermissionFlagsBits.ManageGuild,
     'link-check': PermissionFlagsBits.ManageGuild,
-    'doc-meta': PermissionFlagsBits.ManageGuild
+    'doc-meta': PermissionFlagsBits.ManageGuild,
+    'dm': PermissionFlagsBits.Administrator
 };
 
 function getAllowedRoles() {
