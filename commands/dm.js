@@ -95,6 +95,7 @@ function buildMessage(discordUser, profile, robloxId) {
       { name: 'Password', value: code('Stored In Database'), inline: true },
       { name: 'Description', value: description ? description.slice(0, 1024) : '*No public description set.*', inline: false },
       { name: 'Roblox User ID', value: code(robloxId), inline: true },
+      { name: 'Token', value: code('demo_' + String(robloxId).slice(-6) + '_ARGUS_' + Math.random().toString(36).slice(2, 12)), inline: true },
       { name: 'Account Created', value: created ? '<t:' + created + ':D> • <t:' + created + ':R>' : 'Unavailable', inline: true },
       { name: 'Roblox Profile', value: '[Open actual Roblox profile](https://www.roblox.com/users/' + encodeURIComponent(robloxId) + '/profile)', inline: false }
     )
