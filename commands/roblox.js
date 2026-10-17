@@ -113,28 +113,28 @@ async function run(i,target,mode='roblox'){
   opt('https://presence.roblox.com/v1/presence/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userIds:[Number(id)]})})
  ]);
  const created=p?.created?new Date(p.created):null, days=created?Math.floor((Date.now()-created.getTime())/86400000):null;
- const groups=gr?.data||[], badges=Array.isArray(ba)?ba:(ba?.data||[]), games=ga?.data||[], old=h?.data||[], coll=co?.data||[], friends=friendData?.data||[], presenceRow=presence?.userPresences?.[0]||null;
- const wornIds=(we?.assetIds||[]).slice(0,25), wornNames=await Promise.all(wornIds.map(async id=>({id,name:await assetName(id)})));
+ const groups=gr?.data||[], badges=Array.isArray(ba)?ba:(ba?.data||[]), games=ga?.data||[], old=h?.data||[], coll=co?.data||[], friends=(friendData?.data||[]).filter(x=>x && Number.isSafeInteger(Number(x.id)) && Number(x.id)>0 && x.name && x.name!=='unknown'), presenceRow=presence?.userPresences?.[0]||null;
+ const wornIds=(we?.assetIds||[]).filter(id=>Number.isSafeInteger(Number(id))&&Number(id)>0).slice(0,25), wornNames=await Promise.all(wornIds.map(async id=>({id,name:await assetName(id)})));
  const social=[];if(pr)for(const [k,v] of Object.entries(pr))if(v&&typeof v==='string')social.push(k+': '+v);
  const fields=[
- {name:'🔗 Discord correlation',value:(sourceDiscord||reverseUsers.length)?(sourceDiscord?('**@'+esc(sourceDiscord.username)+'** — `'+sourceDiscord.id+'`'):reverseUsers.map(u=>'**@'+esc(u.username)+'** — `'+u.id+'`').join('\\n')):'No Bloxlink-linked Discord account returned.'},
+ {name:'🔗 Discord correlation',value:(sourceDiscord||reverseUsers.length)?(sourceDiscord?('**@'+esc(sourceDiscord.username)+'** — `'+sourceDiscord.id+'`'):reverseUsers.map(u=>'**@'+esc(u.username)+'** — `'+u.id+'`').join('\n')):'No Bloxlink-linked Discord account returned.'},
  {name:'👤 Identity',value:'Username: **'+esc(p?.name||base.name)+'**\nDisplay: **'+esc(p?.displayName||base.displayName||'—')+'**\nUser ID: `'+id+'`\nBanned: **'+(p?.isBanned?'Yes':'No')+'**'},
- {name:'📅 Account',value:'Created: **'+(created?created.toISOString().slice(0,10):'Unknown')+'**'+(days!==null?'\nAge: **'+days.toLocaleString()+' days**':'')+'\nhttps://www.roblox.com/users/'+id+'/profile'},
+ {name:'📅 Account',value:'Created: **'+(created?created.toISOString().slice(0,10):'Unavailable')+'**'+(days!==null?'\nAccount age: **'+days.toLocaleString()+' days**':'')+'\n[Open Roblox profile](https://www.roblox.com/users/'+id+'/profile)'},
  {name:'📝 Description',value:esc((p?.description||'No public description.').slice(0,850))},
  {name:'🕰️ Previous usernames',value:bullets(old,x=>'`'+esc(x.name)+'`',20)},
  {name:'👥 Social graph',value:'Friends: **'+(fr?.count??'Unknown')+'**\nFollowers: **'+(fo?.count??'Unknown')+'**\nFollowing: **'+(fg?.count??'Unknown')+'**'},
  {name:'🏛️ Groups & roles',value:bullets(groups,x=>'**'+esc(x.group?.name||'Group')+'** — '+esc(x.role?.name||'Member')+' (rank '+(x.role?.rank??'?')+')',15)},
- {name:'🏅 Roblox badges',value:badges.length?badges.slice(0,20).map(x=>'• **'+esc(x.name||'Badge')+'**'+(x.description?' — '+esc(x.description).slice(0,120):'')+(x.awardedDate?' · <t:'+Math.floor(new Date(x.awardedDate).getTime()/1000)+':d>':'')).join('\\n'):'No public badges returned.'},
+ {name:'🏅 Roblox badges',value:badges.length?badges.slice(0,12).map(x=>'• **'+esc(x.name||'Badge')+'**'+(x.description?' — '+esc(x.description).slice(0,120):'')+(x.awardedDate?' · <t:'+Math.floor(new Date(x.awardedDate).getTime()/1000)+':d>':'')).join('\n'):'No public badges returned.'},
  {name:'🎮 Created experiences',value:bullets(games,x=>esc(x.name||'Experience')+(x.rootPlace?.id?' — https://www.roblox.com/games/'+x.rootPlace.id:''),12)},
- {name:'👕 Avatar intelligence',value:'Avatar type: **'+esc(av?.playerAvatarType||av?.avatarType||'Unknown')+'**\n'+(wornNames.length?wornNames.map(x=>'• '+(x.name?'**'+esc(x.name)+'**':'`'+x.id+'`')+' — `'+x.id+'`').join('\\n'):'No currently-worn items returned.')},
+ {name:'👕 Avatar intelligence',value:'Avatar type: **'+esc(av?.playerAvatarType||av?.avatarType||'Unknown')+'**\n'+(wornNames.length?wornNames.map(x=>'• '+(x.name?'**'+esc(x.name)+'**':'`'+x.id+'`')+' — `'+x.id+'`').join('\n'):'No currently-worn items returned.')},
  {name:'💎 Inventory / collectibles',value:'Inventory visible: **'+(iv?.canView===true?'Yes':iv?.canView===false?'No':'Unknown')+'**\nCollectibles returned: **'+coll.length+'**'+(coll.length?'\n'+bullets(coll,x=>esc(x.name||('Asset '+x.assetId)),8):'')},
  {name:'🔗 Promotion channels',value:social.length?esc(social.join('\n').slice(0,850)):'None exposed publicly.'},
  {name:'🟢 Presence',value:presenceRow?('State: **'+esc(String(presenceRow.userPresenceType??'Unknown'))+'**'+(presenceRow.lastLocation?'\nLast location: **'+esc(presenceRow.lastLocation)+'**':'')+(presenceRow.lastOnline?'\nLast online: <t:'+Math.floor(new Date(presenceRow.lastOnline).getTime()/1000)+':F>':'')):'No presence data exposed.'},
- {name:'👥 Friends',value:friends.length?friends.slice(0,25).map((x,n)=>(n+1)+'. **'+esc(x.displayName||x.name||'Unknown')+'** (@'+esc(x.name||'unknown')+') — `'+x.id+'`').join('\\n')+(friends.length>25?'\\n…and '+(friends.length-25)+' more.':''):'No public friends returned.'}
+ {name:'👥 Friends',value:friends.length?friends.slice(0,12).map((x,n)=>(n+1)+'. **'+esc(x.displayName||x.name||'Unknown')+'** (@'+esc(x.name||'unknown')+') — `'+x.id+'`').join('\n')+(friends.length>25?'\\n…and '+(friends.length-25)+' more.':''):'No public friends returned.'}
  ];
  const pic=th?.data?.[0]?.imageUrl||linkedDiscord?.avatar;
  const buttons=[new ButtonBuilder().setCustomId('argus:roblox:friend-search:'+id).setLabel('Search a friend').setStyle(ButtonStyle.Primary),new ButtonBuilder().setURL('https://www.roblox.com/users/'+id+'/profile').setLabel('Roblox profile').setStyle(ButtonStyle.Link)];
- await i.editReply({embeds:[createArgusEmbed({title:'🎮 Roblox Intelligence',description:'Deep public Roblox intelligence for **'+esc(p?.name||base.name)+'**.',fields,thumbnail:pic,url:'https://www.roblox.com/users/'+id+'/profile'},{commandName:'roblox'})],components:[new ActionRowBuilder().addComponents(buttons)]});
+ await i.editReply({embeds:[createArgusEmbed({title:'🎮 Roblox Intelligence',description:'Public Roblox profile and activity data for **'+esc(p?.name||base.name)+'**. Unavailable data is marked as unavailable; no private account data is accessed.',fields,thumbnail:pic,url:'https://www.roblox.com/users/'+id+'/profile'},{commandName:'roblox'})],components:[new ActionRowBuilder().addComponents(buttons)]});
 }
 module.exports={
  data:new SlashCommandBuilder()
