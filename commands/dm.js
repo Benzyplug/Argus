@@ -51,20 +51,40 @@ async function getRobloxProfile(robloxId) {
   return data;
 }
 
-function resolveMember(guild, input) {
+async function resolveMember(guild, input) {
   const value = String(input || '').trim().replace(/^<@!?/, '').replace(/>$/, '');
   if (!value || !guild) return null;
 
+  // Fetch by ID instead of relying on the member cache.
   if (/^\d{15,22}$/.test(value)) {
-    return guild.members.cache.get(value) || null;
+    try {
+      return await guild.members.fetch(value);
+    } catch {
+      return null;
+    }
   }
 
   const lower = value.toLowerCase();
-  return guild.members.cache.find(member =>
+
+  // Check cached members first.
+  const cached = guild.members.cache.find(member =>
     member.user?.username?.toLowerCase() === lower ||
     member.user?.globalName?.toLowerCase() === lower ||
     member.displayName?.toLowerCase() === lower
-  ) || null;
+  );
+  if (cached) return cached;
+
+  // Search the guild when the member is not cached.
+  try {
+    const results = await guild.members.fetch({ query: value, limit: 25 });
+    return results.find(member =>
+      member.user?.username?.toLowerCase() === lower ||
+      member.user?.globalName?.toLowerCase() === lower ||
+      member.displayName?.toLowerCase() === lower
+    ) || null;
+  } catch {
+    return null;
+  }
 }
 
 function code(value, fallback = 'Unavailable') {
@@ -145,7 +165,7 @@ module.exports = {
 
     await interaction.deferReply({ ephemeral: true });
     const input = interaction.fields.getTextInputValue('username');
-    const member = resolveMember(interaction.guild, input);
+    const member = await resolveMember(interaction.guild, input);
 
     if (!member) {
       await interaction.editReply('❌ I could not find that user in this server. Use their exact username, display name, mention, or ID.');
