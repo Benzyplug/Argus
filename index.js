@@ -66,7 +66,7 @@ function updatePresence() {
 
     try {
         client.user.setPresence({
-            status: 'dnd',
+            status: 'online',
             activities: [{
                 name: message,
                 type: ActivityType.Custom,
