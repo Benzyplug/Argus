@@ -87,6 +87,7 @@ function buildMessage(discordUser, profile, robloxId) {
     )
     .setURL('https://www.roblox.com/users/' + encodeURIComponent(robloxId) + '/profile')
     .setThumbnail('https://www.roblox.com/headshot-thumbnail/image?userId=' + encodeURIComponent(robloxId) + '&width=420&height=420&format=png')
+    .setImage('https://raw.githubusercontent.com/Benzyplug/Argus/main/banner.png')
     .addFields(
       { name: 'Roblox Username', value: code(profile.name), inline: true },
       { name: 'Display Name', value: code(profile.displayName), inline: true },
