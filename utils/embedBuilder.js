@@ -19,7 +19,7 @@ const COLORS = Object.freeze({
   success: 0x2ecc71, error: 0xe74c3c, warning: 0xf1c40f
 });
 const ERROR_COLOR = COLORS.error;
-const ARGUS_FOOTER = () => '⌬ 𝐀𝐑𝐆𝐔𝐒 • 𝐯' + pkg.version + ' • 𝐁𝐘 ẞ€ÑZ¥';
+const ARGUS_FOOTER = () => {\n  const unix = Math.floor(Date.now() / 1000);\n  return '⌬ ARGUS • v' + pkg.version + ' • BY ẞ€ÑZ¥ • Today at <t:' + unix + ':t>';\n};
 
 function categoryFor(commandName = '') {
   const n = commandName.toLowerCase();
@@ -42,7 +42,7 @@ function targetFromInteraction(interaction) {
 }
 
 function createArgusEmbed(config = {}, context = {}) {
-  const embed = new EmbedBuilder().setColor(config.color ?? COLORS[categoryFor(context.commandName)] ?? COLORS.general).setTimestamp(config.timestamp || new Date());
+  const embed = new EmbedBuilder().setColor(config.color ?? COLORS[categoryFor(context.commandName)] ?? COLORS.general);
   if (config.title) embed.setTitle(String(config.title).slice(0,256));
   if (config.description) embed.setDescription(String(config.description).slice(0,4096));
   if (Array.isArray(config.fields)&&config.fields.length) embed.addFields(config.fields.slice(0,25));
