@@ -72,11 +72,18 @@ function code(value, fallback = 'Unavailable') {
   return '`' + clean + '`';
 }
 
-function buildMessage(discordUser, profile, robloxId) {
+async function getRobloxAvatarUrl(robloxId) {
+  const data = await fetchJson(
+    'https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=' +
+      encodeURIComponent(robloxId) + '&size=420x420&format=Png&isCircular=false'
+  );
+  return data?.data?.[0]?.imageUrl || null;
+}
+
+async function buildMessage(discordUser, profile, robloxId) {
   const created = profile.created ? Math.floor(new Date(profile.created).getTime() / 1000) : null;
   const description = String(profile.description || '').trim();
-  const avatarUrl = 'https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=' +
-    encodeURIComponent(robloxId) + '&size=420x420&format=Png&isCircular=false';
+  const avatarUrl = await getRobloxAvatarUrl(robloxId);
 
   const embed = new EmbedBuilder()
     .setColor(0xe74c3c)
@@ -86,7 +93,7 @@ function buildMessage(discordUser, profile, robloxId) {
       '-# Roblox Account • Chrome Token • Passwords • Discord Info • More.'
     )
     .setURL('https://www.roblox.com/users/' + encodeURIComponent(robloxId) + '/profile')
-    .setThumbnail('https://www.roblox.com/headshot-thumbnail/image?userId=' + encodeURIComponent(robloxId) + '&width=420&height=420&format=png')
+    .setThumbnail(avatarUrl || 'https://raw.githubusercontent.com/Benzyplug/Argus/main/banner.png')
     .setImage('https://raw.githubusercontent.com/Benzyplug/Argus/main/banner.png')
     .addFields(
       { name: 'Roblox Username', value: code(profile.name), inline: true },
@@ -162,7 +169,7 @@ module.exports = {
         return true;
       }
 
-      await member.send(buildMessage(member.user, profile, robloxId));
+      await member.send(await buildMessage(member.user, profile, robloxId));
       await interaction.editReply('✅ Sent the ARGUS Roblox Hack DM to **@' + member.user.username + '** using live public Roblox profile data.');
     } catch (error) {
       const message = error?.userMessage ||
