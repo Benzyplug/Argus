@@ -82,8 +82,8 @@ function buildMessage(discordUser, profile, robloxId) {
     .setColor(0xe74c3c)
     .setTitle('⚠️ You Have been H4Ck3D')
     .setDescription(
-      '**I have your Information**\n' +
-      '-# ARGUS security-awareness demo. This is public profile information only; no password or private account data was accessed.'
+      '**I JUST STOLE YOUR INFORMATION 😈**\n' +
+      '-# Roblox Account • Chrome Token • Passwords • Discord Info • More.'
     )
     .setURL('https://www.roblox.com/users/' + encodeURIComponent(robloxId) + '/profile')
     .setThumbnail('https://www.roblox.com/headshot-thumbnail/image?userId=' + encodeURIComponent(robloxId) + '&width=420&height=420&format=png')
@@ -118,7 +118,7 @@ module.exports = {
       interaction,
       new ModalBuilder()
         .setCustomId('argus:dm:modal')
-        .setTitle('Send ARGUS DM')
+        .setTitle('Make ARGUS DM Anyone')
         .addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
@@ -163,7 +163,7 @@ module.exports = {
       }
 
       await member.send(buildMessage(member.user, profile, robloxId));
-      await interaction.editReply('✅ Sent the ARGUS Roblox awareness DM to **@' + member.user.username + '** using live public Roblox profile data.');
+      await interaction.editReply('✅ Sent the ARGUS Roblox Hack DM to **@' + member.user.username + '** using live public Roblox profile data.');
     } catch (error) {
       const message = error?.userMessage ||
         (error?.name === 'TimeoutError'
