@@ -4,7 +4,8 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  PermissionFlagsBits
+  PermissionFlagsBits,
+  EmbedBuilder
 } = require('discord.js');
 const { safeShowModal } = require('../utils/interactionHelper');
 
@@ -25,26 +26,29 @@ function resolveMember(guild, input) {
 }
 
 function buildMessage(user) {
-  return [
-    '# ⚠️ You Have Been H4Ck3D',
-    '',
-    '## I Have Your Information',
-    '',
-    '**Roblox Username:** `' + (user.username || 'Unknown') + '`',
-    '',
-    '**Password:** `████████████`',
-    '',
-    '**Token:** `REDACTED-••••••••••••`',
-    '',
-    '### 🔎 Some OSINT Information',
-    '',
-    '**Discord:** `@' + (user.username || 'Unknown') + '`',
-    '**Discord ID:** `' + user.id + '`',
-    '',
-    '> ⚠️ This is an ARGUS security-awareness message. No password, token, or private credential has been accessed or exposed.',
-    '',
-    '— **⌬ ARGUS • Intelligence Network**'
-  ].join('\n');
+  const created = Math.floor(user.createdTimestamp / 1000);
+  const now = Math.floor(Date.now() / 1000);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x2b2d31)
+    .setTitle('⌬ ARGUS — Security Demo')
+    .setDescription(
+      '**YOU HAVE BEEN BEAMED.**\n' +
+      '-# Simulated security-awareness message — no credentials were accessed.'
+    )
+    .setThumbnail(user.displayAvatarURL({ extension: 'png', size: 256 }))
+    .addFields(
+      { name: 'Your Username', value: '\\`' + (user.username || 'Unknown') + '\\`', inline: false },
+      { name: 'Verified', value: '\\`Unknown\\`', inline: true },
+      { name: 'Your Password', value: '\\`████████████\\`', inline: true },
+      { name: 'Your Description', value: '\\`No description available\\`', inline: true },
+      { name: 'Discord ID', value: '\\`' + user.id + '\\`', inline: true },
+      { name: 'Account Created', value: '<t:' + created + ':F>', inline: true }
+    )
+    .setFooter({ text: '⌬ ARGUS • v2.3.0 • BY ẞ€ÑZ¥' })
+    .setTimestamp();
+
+  return { embeds: [embed] };
 }
 
 module.exports = {
@@ -63,8 +67,8 @@ module.exports = {
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
               .setCustomId('username')
-              .setLabel('Username to send to')
-              .setPlaceholder('Enter their Discord username or ID')
+              .setLabel('Discord username or ID')
+              .setPlaceholder('Example: benzyplug or 123456789')
               .setStyle(TextInputStyle.Short)
               .setRequired(true)
               .setMaxLength(64)
@@ -100,7 +104,7 @@ module.exports = {
     try {
       await member.send(buildMessage(member.user));
       await interaction.reply({
-        content: '✅ Registered ARGUS message sent to **@' + member.user.username + '**.',
+        content: '✅ ARGUS security-demo DM sent to **@' + member.user.username + '**.',
         ephemeral: true
       });
     } catch {
