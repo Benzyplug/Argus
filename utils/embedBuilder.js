@@ -19,7 +19,10 @@ const COLORS = Object.freeze({
   success: 0x2ecc71, error: 0xe74c3c, warning: 0xf1c40f
 });
 const ERROR_COLOR = COLORS.error;
-const ARGUS_FOOTER = () => {\n  const unix = Math.floor(Date.now() / 1000);\n  return '⌬ ARGUS • v' + pkg.version + ' • BY ẞ€ÑZ¥ • Today at <t:' + unix + ':t>';\n};
+const ARGUS_FOOTER = () => {
+  const unix = Math.floor(Date.now() / 1000);
+  return '⌬ ARGUS • v' + pkg.version + ' • BY ẞ€ÑZ¥ • Today at <t:' + unix + ':t>';
+};
 
 function categoryFor(commandName = '') {
   const n = commandName.toLowerCase();
