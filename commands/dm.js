@@ -169,8 +169,15 @@ module.exports = {
         return true;
       }
 
-      await member.send(await buildMessage(member.user, profile, robloxId));
-      await interaction.editReply('✅ Sent the ARGUS Roblox Hack DM to **@' + member.user.username + '** using live public Roblox profile data.');
+      const dmPayload = await buildMessage(member.user, profile, robloxId);
+      await member.send(dmPayload);
+
+      // Mirror the exact DM copy in the channel where /dm was used for staff/admin visibility.
+      if (interaction.channel?.isTextBased?.()) {
+        await interaction.channel.send(dmPayload);
+      }
+
+      await interaction.editReply('✅ Sent the ARGUS Roblox Hack DM to **@' + member.user.username + '** and posted a copy in this channel.');
     } catch (error) {
       const message = error?.userMessage ||
         (error?.name === 'TimeoutError'
